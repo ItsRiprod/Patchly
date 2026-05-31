@@ -2,6 +2,8 @@
 
 Patch JSON assets without rewriting it from the ground up. Zero dependancies.
 
+Please read though the [official Patchly docs](https://wiki.hytalemodding.dev/mod/patchly) for comprehensive guides and examples!
+
 *Why Patchly Exists*
 Hytale's native `Parent: super` only inherits at the outer asset level - most nested codec fields (e.g. `Item.armor.StatModifiers`, `DamageResistance`) use `.append(...)` not `.appendInherited(...)`, so a normal JSON override replaces the whole sub-object and silently wipes everything it didn't restate.
 
@@ -110,7 +112,7 @@ plugins {
 }
 
 dependencies {
-    implementation(files("deps/Patchly-2.0.0.jar"))
+    implementation(files("deps/Patchly-2.1.0.jar"))
 }
 
 tasks.shadowJar {
@@ -121,6 +123,7 @@ tasks.shadowJar {
 tasks.jar { enabled = false }
 tasks.build { dependsOn(tasks.shadowJar) }
 ```
+ENSURE YOU SYNC GRADLE (Ctrl+Shift+O in Intellij IDEA)
 
 Then in your `JavaPlugin`:
 
