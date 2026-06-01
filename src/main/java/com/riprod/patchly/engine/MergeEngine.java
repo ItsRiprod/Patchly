@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.riprod.patchly.engine.directive.ElementDirective;
+import com.riprod.patchly.engine.directive.PatchContext;
+import com.riprod.patchly.engine.directive.RootDirective;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -13,9 +15,11 @@ import java.util.List;
 
 public final class MergeEngine implements MergeContext {
     private final MergeTable table;
+    private final PatchContext patchContext;
 
-    public MergeEngine(@Nonnull MergeTable table) {
+    public MergeEngine(@Nonnull MergeTable table, @Nonnull PatchContext patchContext) {
         this.table = table;
+        this.patchContext = patchContext;
     }
 
     @Override
@@ -60,17 +64,33 @@ public final class MergeEngine implements MergeContext {
 
         for (int i = 0; i < patchArray.size(); i++) {
             JsonElement patchEl = patchArray.get(i);
+            if (patchEl.isJsonObject() && isGatedOut(patchEl.getAsJsonObject())) continue;
+
             LocatorPlan plan = resolveLocator(patchEl, base);
             if (plan != null) {
+                MetaKeys.strip(plan.cleanPayload());
                 if (plan.matched()) {
                     operator.onLocatorHit(base, plan.targetIndices(), plan.cleanPayload(), this);
                 } else {
                     operator.onLocatorMiss(base, i, plan.cleanPayload(), this);
                 }
+            } else if (patchEl.isJsonObject()) {
+                JsonObject stripped = patchEl.getAsJsonObject().deepCopy();
+                MetaKeys.strip(stripped);
+                operator.onPlainElement(base, i, stripped, this);
             } else {
                 operator.onPlainElement(base, i, patchEl, this);
             }
         }
+    }
+
+    @Override
+    public boolean isGatedOut(@Nonnull JsonObject patchObject) {
+        for (RootDirective rd : table.directives().rootDirectives()) {
+            JsonElement value = patchObject.get(rd.markerKey());
+            if (value != null && !rd.keep(value, patchContext)) return true;
+        }
+        return false;
     }
 
     @Nullable

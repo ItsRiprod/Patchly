@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.riprod.patchly.engine.MergeContext;
 import com.riprod.patchly.engine.MergeOperator;
+import com.riprod.patchly.engine.MetaKeys;
 
 import javax.annotation.Nonnull;
 
@@ -28,6 +29,12 @@ public final class ReplaceOperator implements MergeOperator {
             return;
         }
         if (patchValue.isJsonObject()) {
+            JsonObject patchObj = patchValue.getAsJsonObject();
+            if (hasReservedKey(patchObj)) {
+                if (ctx.isGatedOut(patchObj)) return;
+                patchObj = patchObj.deepCopy();
+                MetaKeys.strip(patchObj);
+            }
             JsonElement existing = target.get(baseKey);
             JsonObject child = (existing != null && existing.isJsonObject())
                     ? existing.getAsJsonObject()
@@ -35,7 +42,7 @@ public final class ReplaceOperator implements MergeOperator {
             if (existing == null || !existing.isJsonObject()) {
                 target.add(baseKey, child);
             }
-            ctx.mergeObject(child, patchValue.getAsJsonObject());
+            ctx.mergeObject(child, patchObj);
         } else if (patchValue.isJsonArray() && hasAnyMarker(patchValue.getAsJsonArray(), ctx)) {
             ctx.runArrayMerge(target, baseKey, patchValue.getAsJsonArray(), this);
         } else {
@@ -59,6 +66,13 @@ public final class ReplaceOperator implements MergeOperator {
     private static boolean hasAnyMarker(@Nonnull JsonArray arr, @Nonnull MergeContext ctx) {
         for (JsonElement el : arr) {
             if (ctx.hasLocatorMarker(el)) return true;
+        }
+        return false;
+    }
+
+    private static boolean hasReservedKey(@Nonnull JsonObject obj) {
+        for (String key : obj.keySet()) {
+            if (key.startsWith(MetaKeys.PREFIX)) return true;
         }
         return false;
     }

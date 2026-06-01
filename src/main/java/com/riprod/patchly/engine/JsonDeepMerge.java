@@ -2,6 +2,7 @@ package com.riprod.patchly.engine;
 
 import com.google.gson.JsonObject;
 import com.riprod.patchly.engine.directive.DirectiveRegistry;
+import com.riprod.patchly.engine.directive.PatchContext;
 
 import javax.annotation.Nonnull;
 
@@ -10,13 +11,19 @@ public final class JsonDeepMerge {
 
     @Nonnull
     public static JsonObject merge(@Nonnull JsonObject base, @Nonnull JsonObject patch) {
-        return merge(base, patch, activeTable());
+        return merge(base, patch, activeTable(), PatchContext.ALWAYS);
     }
 
     @Nonnull
     public static JsonObject merge(@Nonnull JsonObject base, @Nonnull JsonObject patch, @Nonnull MergeTable table) {
+        return merge(base, patch, table, PatchContext.ALWAYS);
+    }
+
+    @Nonnull
+    public static JsonObject merge(@Nonnull JsonObject base, @Nonnull JsonObject patch,
+                                   @Nonnull MergeTable table, @Nonnull PatchContext ctx) {
         JsonObject result = base.deepCopy();
-        new MergeEngine(table).mergeObject(result, patch);
+        new MergeEngine(table, ctx).mergeObject(result, patch);
         return result;
     }
 

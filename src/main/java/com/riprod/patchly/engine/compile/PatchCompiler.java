@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.riprod.patchly.engine.JsonDeepMerge;
 import com.riprod.patchly.engine.MergeTable;
+import com.riprod.patchly.engine.MetaKeys;
 import com.riprod.patchly.engine.directive.PatchContext;
 import com.riprod.patchly.engine.directive.RootDirective;
 import com.riprod.patchly.source.BasePolicy;
@@ -18,9 +19,9 @@ import java.util.Map;
 public final class PatchCompiler {
     @Nonnull
     public CompileResult compile(@Nonnull List<PatchSource> sources,
-                                 @Nonnull BaseResolver baseResolver,
-                                 @Nonnull PatchContext ctx,
-                                 @Nonnull MergeTable table) {
+            @Nonnull BaseResolver baseResolver,
+            @Nonnull PatchContext ctx,
+            @Nonnull MergeTable table) {
         List<RootDirective> roots = table.directives().rootDirectives();
 
         List<Ordered> ordered = new ArrayList<>(sources.size());
@@ -30,14 +31,16 @@ public final class PatchCompiler {
             int order = 0;
             for (RootDirective rd : roots) {
                 JsonElement value = patch.get(rd.markerKey());
-                if (value == null) continue;
+                if (value == null)
+                    continue;
                 if (!rd.keep(value, ctx)) {
                     keep = false;
                     break;
                 }
                 order += rd.order(value);
             }
-            if (!keep) continue;
+            if (!keep)
+                continue;
             JsonObject stripped = patch.deepCopy();
             MetaKeys.strip(stripped);
             ordered.add(new Ordered(s, order, stripped));
@@ -66,7 +69,7 @@ public final class PatchCompiler {
                 accumulator = base;
             }
 
-            JsonObject merged = JsonDeepMerge.merge(accumulator, o.strippedPatch, table);
+            JsonObject merged = JsonDeepMerge.merge(accumulator, o.strippedPatch, table, ctx);
             JsonDeepMerge.stripMergeKey(merged);
             outputs.put(target, merged);
             sourceToTarget.put(s.id(), target);
@@ -75,5 +78,6 @@ public final class PatchCompiler {
         return new CompileResult(outputs, sourceToTarget, missing);
     }
 
-    private record Ordered(PatchSource source, int priority, JsonObject strippedPatch) {}
+    private record Ordered(PatchSource source, int priority, JsonObject strippedPatch) {
+    }
 }

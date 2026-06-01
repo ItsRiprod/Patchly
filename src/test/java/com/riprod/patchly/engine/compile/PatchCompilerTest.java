@@ -48,6 +48,18 @@ class PatchCompilerTest {
         }
     };
 
+    private static final PatchContext NONE_PRESENT = new PatchContext() {
+        @Override
+        public boolean packPresent(@Nonnull String packName) {
+            return false;
+        }
+
+        @Override
+        public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
+            return false;
+        }
+    };
+
     private static JsonObject parse(String json) {
         return JsonParser.parseString(json).getAsJsonObject();
     }
@@ -61,22 +73,56 @@ class PatchCompilerTest {
     }
 
     @Test
-    void requiresMissingPackExcludesSource() {
-        PatchContext noPacks = new PatchContext() {
-            @Override
-            public boolean packPresent(@Nonnull String packName) {
-                return false;
-            }
+    void nestedRequiresGatesElementWhenAbsent() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Foo.json", PATCH,
+                        "{ \"Children~\": [ { \"$Requires\": \"Some:Mod\", \"$Match\": \"Id\", \"Id\": \"Cloth\", \"Name\": \"patched\" } ] }")),
+                t -> parse("{ \"Children\": [ { \"Id\": \"Cloth\", \"Name\": \"base\" } ] }"), NONE_PRESENT);
+        JsonObject cloth = out.outputs().get("Foo.json").getAsJsonArray("Children").get(0).getAsJsonObject();
+        assertEquals("base", cloth.get("Name").getAsString());
+        assertFalse(out.outputs().get("Foo.json").toString().contains("$Requires"));
+    }
 
-            @Override
-            public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
-                return false;
-            }
-        };
+    @Test
+    void nestedRequiresAppliesAndStripsWhenPresent() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Foo.json", PATCH,
+                        "{ \"Children~\": [ { \"$Requires\": \"Some:Mod\", \"$Match\": \"Id\", \"Id\": \"Cloth\", \"Name\": \"patched\" } ] }")),
+                t -> parse("{ \"Children\": [ { \"Id\": \"Cloth\", \"Name\": \"base\" } ] }"), ALL_PRESENT);
+        JsonObject cloth = out.outputs().get("Foo.json").getAsJsonArray("Children").get(0).getAsJsonObject();
+        assertEquals("patched", cloth.get("Name").getAsString());
+        assertFalse(out.outputs().get("Foo.json").toString().contains("$Requires"));
+    }
+
+    @Test
+    void nestedObjectRequiresGatesFieldWhenAbsent() {
+        // $Requires inside a nested object value: missing pack leaves the base field untouched
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Foo.json", PATCH,
+                        "{ \"TranslationProperties\": { \"$Requires\": \"Some:Mod\", \"Name\": \"patched\" } }")),
+                t -> parse("{ \"TranslationProperties\": { \"Name\": \"base\" } }"), NONE_PRESENT);
+        JsonObject tp = out.outputs().get("Foo.json").getAsJsonObject("TranslationProperties");
+        assertEquals("base", tp.get("Name").getAsString());
+        assertFalse(out.outputs().get("Foo.json").toString().contains("$Requires"));
+    }
+
+    @Test
+    void nestedObjectRequiresAppliesAndStripsWhenPresent() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Foo.json", PATCH,
+                        "{ \"TranslationProperties\": { \"$Requires\": \"Some:Mod\", \"Name\": \"patched\" } }")),
+                t -> parse("{ \"TranslationProperties\": { \"Name\": \"base\" } }"), ALL_PRESENT);
+        JsonObject tp = out.outputs().get("Foo.json").getAsJsonObject("TranslationProperties");
+        assertEquals("patched", tp.get("Name").getAsString());
+        assertFalse(out.outputs().get("Foo.json").toString().contains("$Requires"));
+    }
+
+    @Test
+    void requiresMissingPackExcludesSource() {
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH,
                         "{ \"$Requires\": \"Some:Mod\", \"Tier\": 3 }")),
-                t -> parse("{ \"Tier\": 1 }"), noPacks);
+                t -> parse("{ \"Tier\": 1 }"), NONE_PRESENT);
         assertTrue(out.outputs().isEmpty());
     }
 

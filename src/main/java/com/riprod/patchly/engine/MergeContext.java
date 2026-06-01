@@ -19,4 +19,6 @@ public interface MergeContext {
     LocatorPlan resolveLocator(@Nonnull JsonElement element, @Nonnull JsonArray base);
 
     boolean hasLocatorMarker(@Nonnull JsonElement element);
+
+    boolean isGatedOut(@Nonnull JsonObject patchObject);
 }
