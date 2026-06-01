@@ -36,6 +36,7 @@ That is the whole 80% case.
 |---|---|---|
 | An asset-only pack (JSON, no Java) | `.patch` files + a manifest dependency on Patchly | [For Pack Developers](Guides/Pack-Developers) |
 | A Java plugin that wants patching built in | Patchly shaded into your jar + a few `PatchManager` calls | [For Mod Developers](Guides/Mod-Developers) |
+| Already shipping Patchly 2.x | The smaller `PatchManager` API and version-aware election | [Upgrading 2.x to 3.x](Guides/Migration-2-to-3) |
 
 Everything below is reference. Skip ahead to your guide and come back when you hit something.
 
@@ -50,8 +51,10 @@ A `.patch` is plain JSON. Every key you write is merged onto the matching key in
 | Deep merge (objects) | `{ "A": { "B": 1 } }` | Only leaf `B` changes; sibling keys survive. |
 | Replace array (default) | `"Categories": [...]` | Discards the parent's array, uses yours. |
 | Append to array | `"Categories+": [...]` | Keeps the parent's entries, adds yours at the end. |
+| Extend by index | `"Children~": [ {}, {...} ]` | Merges into the base element at each position; `{}` changes nothing. |
+| Extend by field | `"Children~": [ { "$Match": "Id", "Id": "Tools", ... } ]` | Finds the element whose field matches and merges into it. |
 | Delete a key | `"DamageResistance": null` | Removes that key from the merged asset. |
-| Gate on packs | `"$Requires": "Group:Name"` or `[...]` | Patch applies only if all named packs are installed; otherwise skipped with a log line. |
+| Gate on packs | `"$Requires": "Group:Name"` or `"Group:Name:>=1.2.0"` or `[...]` | Patch applies only if all named packs are installed (and satisfy the optional version range); otherwise skipped with a log line. |
 | Win on conflicts | `"$Priority": 100` | Integer, default 0. Higher applies last and wins on conflicting fields. |
 | Free notes | `"$Comment": "..."` | Any top-level `$`-key is metadata, stripped before merge. |
 
@@ -83,6 +86,38 @@ Arrays **replace** by default. To **append** to the existing array, suffix the k
 
 The parent's existing `Categories` entries stay; this one is added to the end. (`"Categories": [...]` with no `+` would discard the parent's entries.)
 
+## Extend an array element
+
+`+` and replace treat an array as a whole. To reach INTO an existing element and merge fields into it, suffix the key with `~`.
+
+By default `~` is **positional**: the patch element at each position merges into the base element at the same position. An empty `{}` merges nothing, so it naturally skips a slot:
+
+```json
+{ "Children~": [ {}, { "Order": 5 } ] }
+```
+
+This leaves the first element alone and sets `Order` on the second.
+
+When the array is keyed by a field (most Hytale arrays use `Id`), use **`$Match`** to target by that field instead of by position. `$Match` names the field to match on; there is no default, and nothing is matched implicitly:
+
+```json
+{
+  "Children~": [
+    {
+      "$Match": "Id",
+      "Id": "Tools",
+      "SubCategories+": [
+        { "Id": "Staffs", "Name": "server.ui.itemcategory.subcategory.staffs.name", "Order": 100 }
+      ]
+    }
+  ]
+}
+```
+
+This finds the `Children` element whose `Id` is `Tools` and merges into it. The nested `SubCategories+` then appends, so `Tools` keeps its own fields and every sibling category is untouched. `$Match` is stripped from the output.
+
+If `$Match` finds no match, the suffix decides the fallback: under `~` it merges at the element's index, under `+` it appends (an upsert), under a bare key it does nothing. Match works the same under any of those suffixes.
+
 ## Removing a key
 
 A `null` value **deletes** that key from the merged asset:
@@ -106,6 +141,14 @@ A string, or an array of strings (all must be present). Each is matched against 
 ```
 
 If any required pack is missing, the patch is **skipped** with a log line, so you can safely ship cross-mod patches that only activate when both mods are present. There is no exclude or negative form today.
+
+You can also append an optional semver range after the `Group:Name` to gate on the pack's version. It accepts the full range syntax (`>=`, `>`, `<=`, `<`, `=`, `^`, `~`, hyphen ranges, and `||` alternatives):
+
+```json
+{ "$Requires": "Riprod:Hexcode:>=0.5.0", "Armor": { } }
+```
+
+The patch is skipped if the pack is present but its version falls outside the range. Omit the range to check presence only. A malformed range logs a warning and falls back to presence-only.
 
 ## `$Priority` - decide the winner on conflicts
 

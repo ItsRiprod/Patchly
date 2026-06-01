@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.riprod"
-version = "2.1.0"
+version = "3.0.0"
 val javaVersion = 25
 
 repositories {
@@ -19,6 +19,20 @@ dependencies {
     compileOnly(libs.jspecify)
 
     compileOnly(fileTree("lib/") { include("*.jar") })
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+sourceSets {
+    named("test") {
+        compileClasspath += sourceSets["main"].compileClasspath
+        runtimeClasspath += sourceSets["main"].compileClasspath
+    }
+}
+
+tasks.named<Test>("test") {
+    useJUnitPlatform()
 }
 
 java {
@@ -43,6 +57,10 @@ tasks.named<ProcessResources>("processResources") {
     )
 
     filesMatching("manifest.json") {
+        expand(replaceProperties)
+    }
+
+    filesMatching("com/riprod/patchly/patchly-version.properties") {
         expand(replaceProperties)
     }
 

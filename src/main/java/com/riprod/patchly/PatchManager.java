@@ -16,14 +16,22 @@ import com.hypixel.hytale.assetstore.AssetUpdateQuery;
 import com.hypixel.hytale.common.plugin.PluginIdentifier;
 import com.hypixel.hytale.common.plugin.PluginManifest;
 import com.hypixel.hytale.common.semver.Semver;
+import com.hypixel.hytale.common.semver.SemverRange;
+import com.hypixel.hytale.event.EventPriority;
 import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.server.core.asset.AssetModule;
+import com.hypixel.hytale.server.core.asset.AssetPackRegisterEvent;
+import com.hypixel.hytale.server.core.asset.AssetPackUnregisterEvent;
+import com.hypixel.hytale.server.core.asset.LoadAssetEvent;
 import com.hypixel.hytale.server.core.asset.monitor.AssetMonitor;
+import com.hypixel.hytale.server.core.event.events.ShutdownEvent;
+import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.PluginManager;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
@@ -36,68 +44,146 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public final class PatchManager {
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
 
-    public static final String PATCHER_VERSION = "2.0.0";
+    public static final String PATCHER_VERSION = loadSelfVersion();
+    private static final Semver SELF_VERSION = Semver.fromString(PATCHER_VERSION);
+    private static final String PROTOCOL_VERSION = "2";
+
     private static final String SYS_PROP_OWNER = "patcher.owner";
     private static final String SYS_PROP_VERSION = "patcher.version";
+    private static final String SYS_PROP_PROTOCOL = "patcher.protocol";
+    private static final String SYS_PROP_ACTIVATED = "patcher.activated";
 
     private static final String OVERRIDE_PACK_SUFFIX = "_PatcherOverrides";
     private static final String META_REQUIRES = "$Requires";
     private static final String META_PRIORITY = "$Priority";
     private static final String META_PREFIX = "$";
 
+    private final JavaPlugin plugin;
     private final PluginIdentifier owner;
     private final String overridePackName;
     private final Path overrideDir;
-    private final boolean active;
+
+    private volatile boolean winner = false;
+    private boolean legacyDeferred = false;
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
     private final Map<Path, String> patchToTarget = new ConcurrentHashMap<>();
     private volatile boolean monitorInstalled = false;
 
-    public PatchManager(@Nonnull PluginManifest manifest) {
-        this.owner = new PluginIdentifier(manifest);
+    public PatchManager(@Nonnull JavaPlugin plugin) {
+        this.plugin = plugin;
+        this.owner = new PluginIdentifier(plugin.getManifest());
         this.overridePackName = owner.toString() + OVERRIDE_PACK_SUFFIX;
         this.overrideDir = PluginManager.MODS_PATH.resolve(
                 owner.getGroup() + "_" + owner.getName() + OVERRIDE_PACK_SUFFIX);
-        this.active = tryClaimOwnership();
+        vote();
+    }
+
+    public void install() {
+        if (!claimActivation()) return;
+        wipeOverrideDirectory();
+        plugin.getEventRegistry().register(EventPriority.LAST, LoadAssetEvent.class,
+                e -> rebuildAndApply("boot:LoadAssetEvent"));
+        plugin.getEventRegistry().register(AssetPackRegisterEvent.class, e -> {
+            String name = e.getAssetPack().getName();
+            if (isSyntheticOverridePack(name)) return;
+            rebuildAndApply("packRegister:" + name);
+        });
+        plugin.getEventRegistry().register(AssetPackUnregisterEvent.class, e -> {
+            String name = e.getAssetPack().getName();
+            if (isSyntheticOverridePack(name)) return;
+            rebuildAndApply("packUnregister:" + name);
+        });
+        plugin.getEventRegistry().register(ShutdownEvent.class, e -> shutdown());
     }
 
     public boolean isActive() {
-        return active;
+        return winner;
     }
 
     public String getOverridePackName() {
         return overridePackName;
     }
 
-    private boolean tryClaimOwnership() {
-        String existing = System.getProperty(SYS_PROP_OWNER);
-        if (existing != null && !existing.isEmpty()) {
-            String version = System.getProperty(SYS_PROP_VERSION, "?");
-            LOGGER.at(Level.INFO).log(
-                    "[patcher] deferring to existing owner %s v%s (this is %s v%s, disabled)",
-                    existing, version, owner, PATCHER_VERSION);
+    private static String loadSelfVersion() {
+        try (InputStream in = PatchManager.class.getResourceAsStream("patchly-version.properties")) {
+            if (in != null) {
+                Properties props = new Properties();
+                props.load(in);
+                String v = props.getProperty("version");
+                if (v != null && !v.isBlank()) return v.trim();
+            }
+        } catch (IOException ignored) {
+        }
+        return "0.0.0";
+    }
+
+    private void vote() {
+        String existingOwner = System.getProperty(SYS_PROP_OWNER);
+        if (existingOwner != null && !existingOwner.isEmpty()
+                && System.getProperty(SYS_PROP_PROTOCOL) == null) {
+            legacyDeferred = true;
+            return;
+        }
+        Semver existing = parseVersionProp(System.getProperty(SYS_PROP_VERSION));
+        if (existing == null || SELF_VERSION.compareTo(existing) > 0) {
+            System.setProperty(SYS_PROP_OWNER, owner.toString());
+            System.setProperty(SYS_PROP_VERSION, PATCHER_VERSION);
+            System.setProperty(SYS_PROP_PROTOCOL, PROTOCOL_VERSION);
+        }
+    }
+
+    public boolean claimActivation() {
+        if (legacyDeferred) {
+            LOGGER.at(Level.WARNING).log(
+                    "[patcher] legacy Patchly already active (%s); deferring %s v%s (pre-election behavior)",
+                    System.getProperty(SYS_PROP_OWNER), owner, PATCHER_VERSION);
             return false;
         }
-        System.setProperty(SYS_PROP_OWNER, owner.toString());
-        System.setProperty(SYS_PROP_VERSION, PATCHER_VERSION);
-        LOGGER.at(Level.INFO).log("[patcher] claimed ownership: %s v%s", owner, PATCHER_VERSION);
+        if (System.getProperty(SYS_PROP_ACTIVATED) != null) {
+            LOGGER.at(Level.INFO).log(
+                    "[patcher] boot election already concluded; deferring %s v%s", owner, PATCHER_VERSION);
+            return false;
+        }
+        if (!isWinner()) {
+            LOGGER.at(Level.INFO).log(
+                    "[patcher] deferring to %s v%s (this is %s v%s)",
+                    System.getProperty(SYS_PROP_OWNER), System.getProperty(SYS_PROP_VERSION),
+                    owner, PATCHER_VERSION);
+            return false;
+        }
+        System.setProperty(SYS_PROP_ACTIVATED, owner.toString());
+        winner = true;
+        LOGGER.at(Level.INFO).log("[patcher] won boot election: %s v%s", owner, PATCHER_VERSION);
         return true;
     }
 
-    public void preLoad() {
-        if (!active) return;
+    private boolean isWinner() {
+        return owner.toString().equals(System.getProperty(SYS_PROP_OWNER))
+                && PATCHER_VERSION.equals(System.getProperty(SYS_PROP_VERSION));
+    }
+
+    @Nullable
+    private static Semver parseVersionProp(@Nullable String v) {
+        if (v == null || v.isEmpty()) return null;
+        try {
+            return Semver.fromString(v);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private void wipeOverrideDirectory() {
         try {
             if (Files.isDirectory(overrideDir)) {
                 Files.walkFileTree(overrideDir, new SimpleFileVisitor<>() {
@@ -121,7 +207,7 @@ public final class PatchManager {
     }
 
     public synchronized void rebuildAndApply(@Nonnull String reason) {
-        if (!active) return;
+        if (!winner) return;
 
         Map<String, JsonObject> desired = composeDesiredOutputs();
         if (desired.isEmpty()) {
@@ -161,8 +247,12 @@ public final class PatchManager {
     }
 
     public void shutdown() {
-        if (!active) return;
+        if (!winner) return;
         clearOverrideDirectory(true);
+        System.clearProperty(SYS_PROP_OWNER);
+        System.clearProperty(SYS_PROP_VERSION);
+        System.clearProperty(SYS_PROP_PROTOCOL);
+        System.clearProperty(SYS_PROP_ACTIVATED);
     }
 
     public static boolean isSyntheticOverridePack(@Nonnull String name) {
@@ -318,7 +408,7 @@ public final class PatchManager {
     private boolean checkRequires(@Nonnull JsonObject patch, @Nonnull Path patchFile) {
         JsonElement req = patch.get(META_REQUIRES);
         if (req == null) return true;
-        Set<String> required = new HashSet<>();
+        List<String> required = new ArrayList<>();
         if (req.isJsonArray()) {
             JsonArray arr = req.getAsJsonArray();
             for (JsonElement e : arr) {
@@ -328,13 +418,42 @@ public final class PatchManager {
             required.add(req.getAsString());
         }
         if (required.isEmpty()) return true;
-        Set<String> present = new HashSet<>();
-        for (AssetPack p : AssetModule.get().getAssetPacks()) present.add(p.getName());
-        Set<String> missing = new HashSet<>(required);
-        missing.removeAll(present);
-        if (missing.isEmpty()) return true;
-        LOGGER.at(Level.INFO).log("[patcher] skip %s - missing required pack(s): %s", patchFile, missing);
-        return false;
+
+        Map<String, AssetPack> present = new HashMap<>();
+        for (AssetPack p : AssetModule.get().getAssetPacks()) present.put(p.getName(), p);
+
+        for (String entry : required) {
+            // pack identifiers are exactly Group:Name (one colon); a second colon starts the
+            // optional semver range, which itself never contains a colon
+            int secondColon = entry.indexOf(':', entry.indexOf(':') + 1);
+            String name = secondColon >= 0 ? entry.substring(0, secondColon) : entry;
+            String range = secondColon >= 0 ? entry.substring(secondColon + 1) : null;
+
+            AssetPack pack = present.get(name);
+            if (pack == null) {
+                LOGGER.at(Level.INFO).log("[patcher] skip %s - missing required pack: %s", patchFile, name);
+                return false;
+            }
+            if (range == null) continue;
+
+            Semver version = pack.getManifest().getVersion();
+            SemverRange parsedRange;
+            try {
+                parsedRange = SemverRange.fromString(range);
+            } catch (RuntimeException e) {
+                LOGGER.at(Level.WARNING).log(
+                        "[patcher] %s has malformed version range '%s' for %s; treating as presence-only",
+                        patchFile, range, name);
+                continue;
+            }
+            if (!version.satisfies(parsedRange)) {
+                LOGGER.at(Level.INFO).log(
+                        "[patcher] skip %s - %s v%s does not satisfy required range '%s'",
+                        patchFile, name, version, range);
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void stripMetaKeys(@Nonnull JsonObject obj) {
@@ -436,7 +555,7 @@ public final class PatchManager {
     }
 
     void onPatchEvent(@Nonnull AssetPack pack, @Nonnull Path patchFile) {
-        if (!active) return;
+        if (!winner) return;
         if (!PathUtil.isPatchFile(patchFile)) return;
         if (Files.exists(patchFile)) {
             rebuildAndApply("patchEdit:" + pack.getName() + ":" + patchFile.getFileName());
