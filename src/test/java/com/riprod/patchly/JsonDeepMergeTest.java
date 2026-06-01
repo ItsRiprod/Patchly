@@ -3,6 +3,7 @@ package com.riprod.patchly;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.riprod.patchly.engine.JsonDeepMerge;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

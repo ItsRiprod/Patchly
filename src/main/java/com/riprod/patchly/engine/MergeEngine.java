@@ -1,0 +1,104 @@
+package com.riprod.patchly.engine;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.riprod.patchly.engine.directive.ElementDirective;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+public final class MergeEngine implements MergeContext {
+    private final MergeTable table;
+
+    public MergeEngine(@Nonnull MergeTable table) {
+        this.table = table;
+    }
+
+    @Override
+    public void mergeObject(@Nonnull JsonObject target, @Nonnull JsonObject patch) {
+        List<Resolved> entries = new ArrayList<>(patch.size());
+        for (String key : patch.keySet()) {
+            entries.add(new Resolved(key, table.operatorFor(key)));
+        }
+        entries.sort(Comparator.comparingInt(e -> e.operator.phase()));
+        for (Resolved e : entries) {
+            String baseKey = table.baseKey(e.key, e.operator);
+            e.operator.apply(target, baseKey, patch.get(e.key), this);
+        }
+    }
+
+    private record Resolved(String key, MergeOperator operator) {}
+
+    @Override
+    public void mergeAtIndex(@Nonnull JsonArray base, int index, @Nonnull JsonElement element) {
+        if (index < base.size()) {
+            JsonElement baseEl = base.get(index);
+            if (baseEl.isJsonObject() && element.isJsonObject()) {
+                mergeObject(baseEl.getAsJsonObject(), element.getAsJsonObject());
+            } else {
+                base.set(index, element.deepCopy());
+            }
+        } else {
+            base.add(element.deepCopy());
+        }
+    }
+
+    @Override
+    public void runArrayMerge(@Nonnull JsonObject target, @Nonnull String baseKey,
+                              @Nonnull JsonArray patchArray, @Nonnull MergeOperator operator) {
+        JsonElement existing = target.get(baseKey);
+        JsonArray base = (existing != null && existing.isJsonArray())
+                ? existing.getAsJsonArray()
+                : new JsonArray();
+        if (existing == null || !existing.isJsonArray()) {
+            target.add(baseKey, base);
+        }
+
+        for (int i = 0; i < patchArray.size(); i++) {
+            JsonElement patchEl = patchArray.get(i);
+            LocatorPlan plan = resolveLocator(patchEl, base);
+            if (plan != null) {
+                if (plan.matched()) {
+                    operator.onLocatorHit(base, plan.targetIndices(), plan.cleanPayload(), this);
+                } else {
+                    operator.onLocatorMiss(base, i, plan.cleanPayload(), this);
+                }
+            } else {
+                operator.onPlainElement(base, i, patchEl, this);
+            }
+        }
+    }
+
+    @Nullable
+    @Override
+    public LocatorPlan resolveLocator(@Nonnull JsonElement element, @Nonnull JsonArray base) {
+        if (!element.isJsonObject()) return null;
+        JsonObject obj = element.getAsJsonObject();
+        ElementDirective found = null;
+        for (String key : obj.keySet()) {
+            if (key.isEmpty() || key.charAt(0) != '$') continue;
+            ElementDirective d = table.elementDirective(key);
+            if (d == null) continue;
+            if (found != null) {
+                throw new MergeException(
+                        "element carries multiple locator markers: " + found.markerKey() + " and " + key);
+            }
+            found = d;
+        }
+        if (found == null) return null;
+        return found.locate(obj, base);
+    }
+
+    @Override
+    public boolean hasLocatorMarker(@Nonnull JsonElement element) {
+        if (!element.isJsonObject()) return false;
+        for (String key : element.getAsJsonObject().keySet()) {
+            if (!key.isEmpty() && key.charAt(0) == '$' && table.elementDirective(key) != null) return true;
+        }
+        return false;
+    }
+}
