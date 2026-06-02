@@ -1,5 +1,5 @@
 ---
-title: "Conditional Overrides"
+title: "Conditional Override"
 order: 1
 published: true
 draft: false

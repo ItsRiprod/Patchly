@@ -1,5 +1,5 @@
 ---
-title: "Change a Crafting Recipe"
+title: "Recipe Change"
 order: 9
 published: true
 draft: false
@@ -253,4 +253,4 @@ to the end. The recipe now has four input entries.
 - To make the item uncraftable instead, delete the whole `Recipe` with `null`.
   See [Removing-Values](Removing-Values).
 - If more than one mod edits the same recipe, `$Priority` decides last-wins. See
-  the [syntax reference](index) and the [Pack Developers guide](Pack-Developers).
+  the [syntax reference](Introduction) and the [Pack Developers guide](Pack-Developers).

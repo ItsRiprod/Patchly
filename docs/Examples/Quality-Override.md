@@ -1,5 +1,5 @@
 ---
-title: "Change Block or Armor Quality"
+title: "Quality Override"
 order: 5
 published: true
 draft: false
@@ -335,6 +335,6 @@ Two patches, one per target. Each path mirrors the target with `.json` swapped f
 - Because this is a scalar replace, there is no `+` (array append) or `null`
   (delete) involved. See [Removing-Values](Removing-Values) for those.
 - If two packs both set `Quality` on the same item, the one with the higher
-  `$Priority` wins. See the [syntax reference](index) and the
+  `$Priority` wins. See the [syntax reference](Introduction) and the
   [Pack Developers guide](Pack-Developers).
 - This is actually the reason why I added Patchly. I had to override the quality on ~20 armor pieces and gave up. So I made patchly instead

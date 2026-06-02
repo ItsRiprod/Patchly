@@ -1,5 +1,5 @@
 ---
-title: "Give the Player a Stat (Mana)"
+title: "Player Stat"
 order: 3
 published: true
 draft: false
@@ -98,4 +98,4 @@ The merged result:
 ## Notes
 
 - A mod that adds its own brand-new stat just ships a new file like `Server/Entity/Stats/Magic_Power.json` (as hexcode does for `Magic_Power`, `Volatility`, and `MagicCharges`). There is nothing to merge, so that is a normal asset, not a patch. Patchly is for MODIFYING a stat that another pack (or the base game) already defines, like retuning Mana's `Max` or regen here.
-- If several mods retune the same stat, use `$Priority` to decide whose values win. The highest priority applies last on a conflict. See [Removing-Values](Removing-Values) for deletes and the [syntax reference](index) for the full ruleset.
+- If several mods retune the same stat, use `$Priority` to decide whose values win. The highest priority applies last on a conflict. See [Removing-Values](Removing-Values) for deletes and the [syntax reference](Introduction) for the full ruleset.

@@ -1,5 +1,5 @@
 ---
-title: "Add a Crafting Bench Category"
+title: "Bench Category"
 order: 2
 published: true
 draft: false
@@ -238,4 +238,4 @@ The key is `Categories+`, not `Categories`. The `+` appends to the array. A plai
 
 ## Notes
 
-- The `+` suffix is the key here. Without it the array is replaced, not extended. See the array rules in the [syntax reference](index).
+- The `+` suffix is the key here. Without it the array is replaced, not extended. See the array rules in the [syntax reference](Introduction).

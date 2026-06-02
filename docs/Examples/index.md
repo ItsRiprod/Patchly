@@ -6,7 +6,7 @@ draft: false
 ---
 # Examples
 
-If you have not read the [syntax reference](index) yet, it may be good to do first
+If you have not read the [syntax reference](Introduction) yet, it may be good to do first
 
 ## By feature
 

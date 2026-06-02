@@ -1,5 +1,5 @@
 ---
-title: "Add to a Droplist or Wire a New One"
+title: "Droplists"
 order: 8
 published: true
 draft: false
@@ -93,7 +93,7 @@ Patch at `Server/Drops/Soil_Gravel.patch`:
 }
 ```
 
-`PortalKey_Maze_Var1` is a real Icarus item, so `$Requires: "Icarus:EchoOfIcarus"` gates the whole patch: the bonus drop only appears when the Icarus pack is installed. The `+` appends; plain `"Containers"` would wipe the stock `Rubble_Stone` drop. See [Replace vs append](index).
+`PortalKey_Maze_Var1` is a real Icarus item, so `$Requires: "Icarus:EchoOfIcarus"` gates the whole patch: the bonus drop only appears when the Icarus pack is installed. The `+` appends; plain `"Containers"` would wipe the stock `Rubble_Stone` drop. See [Replace vs append](Introduction).
 
 ### Case 2 - point a block at a brand-new droplist
 

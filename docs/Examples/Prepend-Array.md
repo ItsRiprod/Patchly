@@ -1,5 +1,5 @@
 ---
-title: "Prepend to an Array"
+title: "Prepend Array"
 order: 13
 published: true
 draft: false
@@ -128,4 +128,4 @@ matches nothing, so it is prepended. `$Match` is stripped from the output.
   restate the array with only the survivors (see [Remove a Field or Recipe](Removing-Values)).
 - Prepend and append are independent: `Children-` and `Children+` in the same patch both apply,
   yielding `[ prepended..., base..., appended... ]`. See the array rules in the
-  [syntax reference](index).
+  [syntax reference](Introduction).

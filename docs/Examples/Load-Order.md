@@ -1,5 +1,5 @@
 ---
-title: "Particles from a Later-Loading Pack"
+title: "Load Order"
 order: 6
 published: true
 draft: false
@@ -187,5 +187,5 @@ Why the load order works out: Patchly re-runs its merge on every `AssetPackRegis
 
 - You CANNOT patch the `.particlesystem` file itself (yet). It is not JSON. If the particle system does not exist in any pack, ship its `.particlesystem` as a NORMAL full asset file in your pack. Patchly only wires the JSON reference to it.
 - The same rule applies to models (`.blockymodel`), textures (`.png`), and lang (`.lang`): patch the JSON that REFERENCES the binary asset, never the binary asset. Ship those as normal full files.
-- Use `Particles+`, not `Particles`, unless you genuinely intend to drop the stock particles. A bare `Particles` array REPLACES the whole array. See the [syntax reference](index) for the append rules and [Removing Values](Removing-Values) for deletion.
-- Use `$Requires` whenever your patch names an id that only exists once another pack is loaded. It guards against writing references the engine cannot resolve yet. Full meta-key reference is in the [syntax reference](index).
+- Use `Particles+`, not `Particles`, unless you genuinely intend to drop the stock particles. A bare `Particles` array REPLACES the whole array. See the [syntax reference](Introduction) for the append rules and [Removing Values](Removing-Values) for deletion.
+- Use `$Requires` whenever your patch names an id that only exists once another pack is loaded. It guards against writing references the engine cannot resolve yet. Full meta-key reference is in the [syntax reference](Introduction).

@@ -1,5 +1,5 @@
 ---
-title: "Add a Stat Only If It Is Missing"
+title: "Fill If Absent"
 order: 12
 published: true
 draft: false
@@ -125,4 +125,4 @@ one is written.
 - Contrast with `$Priority`: priority only orders patches against EACH OTHER, never against the
   base. A low `$Priority` still overwrites the base. `?` is the only way to let the base win.
 - Ship the same `?` patch across a whole armor set: pieces that lack the stat get your default,
-  pieces that already tune it keep theirs. See the array rules in the [syntax reference](index).
+  pieces that already tune it keep theirs. See the array rules in the [syntax reference](Introduction).

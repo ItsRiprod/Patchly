@@ -1,5 +1,5 @@
 ---
-title: "Upgrading 2.x to 3.x"
+title: "Migration 2 to 3"
 order: 3
 published: true
 draft: false

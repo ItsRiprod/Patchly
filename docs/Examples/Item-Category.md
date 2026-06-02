@@ -1,5 +1,5 @@
 ---
-title: "Put an Item Into a Category"
+title: "Item Category"
 order: 10
 published: true
 draft: false
@@ -220,4 +220,4 @@ This works because Patchly merges your patch onto the FULLY RESOLVED base asset,
 - The `+` matters. A plain `Categories` key would REPLACE the array and drop `Items.Weapons`.
 - `$Requires` gates the entire patch on another mod being present. `Riprod:Hexcode` is the hexcode spell-crafting mod, and `Hexcode.Staves` is the creative category its staff items use. Listing a vanilla sword there only makes sense when hexcode is installed, so gating avoids dangling references on servers that lack it.
 - The category id must be registered somewhere (a creative tab / ItemCategory, or a bench category) for it to actually show up. This example is the ITEM side: it puts an item INTO a category. To DEFINE a new bench category, see [Bench-Category](Bench-Category).
-- This is also a clean demonstration that Patchly patches the resolved asset, not the raw child file. See the syntax reference at [index](index) for how `+` and array merging work.
+- This is also a clean demonstration that Patchly patches the resolved asset, not the raw child file. See the syntax reference at [index](Introduction) for how `+` and array merging work.

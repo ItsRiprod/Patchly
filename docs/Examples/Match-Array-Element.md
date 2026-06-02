@@ -1,5 +1,5 @@
 ---
-title: "Override One Array Element"
+title: "Match Array Element"
 order: 11
 published: true
 draft: false
@@ -125,5 +125,5 @@ This leaves index 0 alone and sets `Enabled` on index 1.
   (upsert), a bare key does nothing. Pair `$Match` with `~` or `+` when you want a defined
   fallback.
 - `SubCategories+` inside the matched element shows that operators compose to any depth. See
-  the [syntax reference](index) for the full ruleset.
+  the [syntax reference](Introduction) for the full ruleset.
 - A plain array with no `$Match` and no `~`/`+` still replaces wholesale, exactly as before.

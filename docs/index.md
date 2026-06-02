@@ -53,7 +53,7 @@ A `.patch` is plain JSON. Every key you write is merged onto the matching key in
 | Gate on packs | `"$Requires": "Group:Name"` or `"Group:Name:>=1.2.0"` or `[...]` | Patch applies only if all named packs are installed (and satisfy the optional version range); otherwise skipped with a log line. |
 | Win on conflicts | `"$Priority": 100` | Integer, default 0. Higher applies last and wins on conflicting fields. |
 
-An overview of their implementation is found [here](Examples/index)
+An overview of their implementation is found [here](Examples)
 
 # Questions and Answers
 

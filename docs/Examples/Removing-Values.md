@@ -1,5 +1,5 @@
 ---
-title: "Remove a Field or Recipe"
+title: "Removing Values"
 order: 7
 published: true
 draft: false
@@ -196,9 +196,9 @@ be crafted.
   ```
 
   The written array fully replaces the original two-entry array. The `+` append
-  suffix is the opposite tool; see the [syntax reference](index).
+  suffix is the opposite tool; see the [syntax reference](Introduction).
 - Hytale's own assets use `"$Comment"`. Any top-level `$`-key is stripped before
   merge and never written, so it is not a way to remove real fields. Only `null`
   deletes.
 - If another pack also sets the same key, `$Priority` decides last-wins. See the
-  [syntax reference](index) and the [Pack Developers guide](Guides/Pack-Developers).
+  [syntax reference](Introduction) and the [Pack Developers guide](Pack-Developers).

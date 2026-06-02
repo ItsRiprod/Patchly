@@ -1,5 +1,5 @@
 ---
-title: "Repoint an Interaction at Another Mod"
+title: "Replace Interaction"
 order: 4
 published: true
 draft: false
