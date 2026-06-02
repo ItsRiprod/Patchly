@@ -51,6 +51,8 @@ A `.patch` is plain JSON. Every key you write is merged onto the matching key in
 | Deep merge (objects) | `{ "A": { "B": 1 } }` | Only leaf `B` changes; sibling keys survive. |
 | Replace array (default) | `"Categories": [...]` | Discards the parent's array, uses yours. |
 | Append to array | `"Categories+": [...]` | Keeps the parent's entries, adds yours at the end. |
+| Prepend to array | `"Categories-": [...]` | Keeps the parent's entries, adds yours at the front. |
+| Fill if absent | `"Mana?": [...]` | Writes the value only if the key is missing; otherwise the base wins. |
 | Extend by index | `"Children~": [ {}, {...} ]` | Merges into the base element at each position; `{}` changes nothing. |
 | Extend by field | `"Children~": [ { "$Match": "Id", "Id": "Tools", ... } ]` | Finds the element whose field matches and merges into it. |
 | Delete a key | `"DamageResistance": null` | Removes that key from the merged asset. |
@@ -85,6 +87,24 @@ Arrays **replace** by default. To **append** to the existing array, suffix the k
 ```
 
 The parent's existing `Categories` entries stay; this one is added to the end. (`"Categories": [...]` with no `+` would discard the parent's entries.)
+
+To **prepend** instead, suffix the key with `-`. Your entries land at the FRONT, in the order you wrote them, and the parent's entries follow:
+
+```json
+{ "Children-": [ { "Id": "Hexcode", "Name": "hexcode.itemcategory.hexcode.name" } ] }
+```
+
+`-` is fully symmetric with `+`: it creates the array if absent, ignores non-array values, and supports `$Match` (a hit merges in place, a miss prepends). It means **prepend**, not remove. See [Prepend to an Array](Examples/Prepend-Array).
+
+## Fill only if a key is missing
+
+Deep merge and `+` always overwrite. To write a value **only when the target does not already have that key**, suffix the key with `?`. If the key is present, the base wins and your value is dropped:
+
+```json
+{ "Armor": { "StatModifiers": { "Mana?": [{ "Amount": 200, "CalculationType": "Additive" }] } } }
+```
+
+If the item already defines `Mana`, it keeps it; if it has none, it gets `200`. `?` checks key presence, so it works for any value type (scalar, array, object) and is decided per key. This is the only way to let the base win - `$Priority` only orders patches against each other, never against the base. See [Add a Stat Only If It Is Missing](Examples/Fill-If-Absent).
 
 ## Extend an array element
 

@@ -6,7 +6,7 @@ draft: false
 ---
 # Examples
 
-If you have not read the [syntax reference](../) yet, skim it first: deep-merge, `+` append, `null` delete, `$Requires`, and `$Priority` are used throughout.
+If you have not read the [syntax reference](../) yet, skim it first: deep-merge, `+` append, `-` prepend, `?` fill-if-absent, `null` delete, `$Requires`, and `$Priority` are used throughout.
 
 ## The examples
 
@@ -23,6 +23,8 @@ If you have not read the [syntax reference](../) yet, skim it first: deep-merge,
 | 9 | [Change a crafting recipe's ingredients or bench](Recipe-Change) | nested object merge |
 | 10 | [Put an item into a creative or crafting category](Item-Into-Category) | `Categories+` on the item |
 | 11 | [Override one element inside an array](Override-Array-Element) | `~` element merge + `$Match` |
+| 12 | [Add a stat only if the item doesn't already have it](Fill-If-Absent) | `?` fill-if-absent |
+| 13 | [Put your entries at the front of an array](Prepend-Array) | `-` prepend |
 
 ## What Patchly can and cannot patch (for now)
 

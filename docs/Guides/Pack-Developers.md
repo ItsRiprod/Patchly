@@ -50,7 +50,7 @@ The `.patch` contains only the fields you want to change:
 }
 ```
 
-The path is the only link to the source. Patchly resolves the target from whichever pack actually owns it; you never reference the source pack by name in the file. For the full merge rules (`+` append, `null` removal, `$Requires`, `$Priority`), see the [syntax reference](../).
+The path is the only link to the source. Patchly resolves the target from whichever pack actually owns it; you never reference the source pack by name in the file. For the full merge rules (`+` append, `-` prepend, `?` fill-if-absent, `null` removal, `$Requires`, `$Priority`), see the [syntax reference](../).
 
 ## 3. Require Patchly as a dependency
 
