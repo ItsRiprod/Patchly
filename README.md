@@ -109,16 +109,22 @@ plugins {
     id("com.gradleup.shadow") version "8.3.5"
 }
 
+// a dedicated configuration so ONLY Patchly is shaded, not your compile deps
+val shaded by configurations.creating
+
 dependencies {
-    implementation(files("deps/Patchly-3.0.0.jar"))
+    // compile against the API, and mark it for shading into the final jar
+    shaded(files("deps/Patchly-3.1.0.jar"))
+    implementation(files("deps/Patchly-3.1.0.jar"))
 }
 
 tasks.shadowJar {
-    archiveClassifier.set("")
+    archiveClassifier.set("")        // shadow jar IS the published artifact
     mergeServiceFiles()
+    configurations = listOf(shaded)  // shade only what's in `shaded`
 }
 
-tasks.jar { enabled = false }
+tasks.jar { enabled = false }        // disable the thin jar
 tasks.build { dependsOn(tasks.shadowJar) }
 ```
 

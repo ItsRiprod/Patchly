@@ -107,8 +107,8 @@ Update the file you shade in `build.gradle.kts`:
 val shaded by configurations.creating
 
 dependencies {
-    shaded(files("deps/Patchly-3.0.0.jar"))
-    implementation(files("deps/Patchly-3.0.0.jar"))
+    shaded(files("deps/Patchly-3.1.0.jar"))
+    implementation(files("deps/Patchly-3.1.0.jar"))
 }
 ```
 
