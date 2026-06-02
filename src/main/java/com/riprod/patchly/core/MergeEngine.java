@@ -1,11 +1,11 @@
-package com.riprod.patchly.engine;
+package com.riprod.patchly.core;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.riprod.patchly.engine.directive.ElementDirective;
-import com.riprod.patchly.engine.directive.PatchContext;
-import com.riprod.patchly.engine.directive.RootDirective;
+import com.riprod.patchly.core.directive.ElementDirective;
+import com.riprod.patchly.core.directive.PatchContext;
+import com.riprod.patchly.core.directive.RootDirective;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

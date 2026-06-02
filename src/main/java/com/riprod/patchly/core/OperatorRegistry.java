@@ -1,8 +1,8 @@
-package com.riprod.patchly.engine;
+package com.riprod.patchly.core;
 
-import com.riprod.patchly.engine.ops.AppendOperator;
-import com.riprod.patchly.engine.ops.PositionalOperator;
-import com.riprod.patchly.engine.ops.ReplaceOperator;
+import com.riprod.patchly.core.ops.builtin.AppendOperator;
+import com.riprod.patchly.core.ops.builtin.PositionalOperator;
+import com.riprod.patchly.core.ops.builtin.ReplaceOperator;
 import com.riprod.patchly.registry.KeyValidator;
 import com.riprod.patchly.registry.Registry;
 

@@ -4,8 +4,15 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.riprod.patchly.engine.directive.DirectiveRegistry;
-import com.riprod.patchly.engine.ops.ReplaceOperator;
+import com.riprod.patchly.core.JsonDeepMerge;
+import com.riprod.patchly.core.MergeContext;
+import com.riprod.patchly.core.MergeOperator;
+import com.riprod.patchly.core.MergeTable;
+import com.riprod.patchly.core.OperatorRegistry;
+import com.riprod.patchly.core.OperatorTable;
+import com.riprod.patchly.core.directive.DirectiveRegistry;
+import com.riprod.patchly.core.ops.builtin.ReplaceOperator;
+
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.Nonnull;

@@ -1,4 +1,4 @@
-package com.riprod.patchly.engine.compile;
+package com.riprod.patchly.core.compile;
 
 import com.google.gson.JsonObject;
 

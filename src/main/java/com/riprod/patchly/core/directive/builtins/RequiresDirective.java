@@ -1,8 +1,8 @@
-package com.riprod.patchly.engine.directive.builtins;
+package com.riprod.patchly.core.directive.builtins;
 
 import com.google.gson.JsonElement;
-import com.riprod.patchly.engine.directive.PatchContext;
-import com.riprod.patchly.engine.directive.RootDirective;
+import com.riprod.patchly.core.directive.PatchContext;
+import com.riprod.patchly.core.directive.RootDirective;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;

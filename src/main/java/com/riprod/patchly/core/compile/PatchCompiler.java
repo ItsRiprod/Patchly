@@ -1,12 +1,12 @@
-package com.riprod.patchly.engine.compile;
+package com.riprod.patchly.core.compile;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.riprod.patchly.engine.JsonDeepMerge;
-import com.riprod.patchly.engine.MergeTable;
-import com.riprod.patchly.engine.MetaKeys;
-import com.riprod.patchly.engine.directive.PatchContext;
-import com.riprod.patchly.engine.directive.RootDirective;
+import com.riprod.patchly.core.JsonDeepMerge;
+import com.riprod.patchly.core.MergeTable;
+import com.riprod.patchly.core.MetaKeys;
+import com.riprod.patchly.core.directive.PatchContext;
+import com.riprod.patchly.core.directive.RootDirective;
 import com.riprod.patchly.source.BasePolicy;
 
 import javax.annotation.Nonnull;

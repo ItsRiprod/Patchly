@@ -1,10 +1,10 @@
-package com.riprod.patchly.engine.ops;
+package com.riprod.patchly.core.ops.builtin;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.riprod.patchly.engine.MergeContext;
-import com.riprod.patchly.engine.MergeOperator;
+import com.riprod.patchly.core.MergeContext;
+import com.riprod.patchly.core.MergeOperator;
 
 import javax.annotation.Nonnull;
 

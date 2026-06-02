@@ -1,4 +1,4 @@
-package com.riprod.patchly.engine.directive;
+package com.riprod.patchly.core.directive;
 
 import com.google.gson.JsonElement;
 

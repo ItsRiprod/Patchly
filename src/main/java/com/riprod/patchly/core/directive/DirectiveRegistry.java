@@ -1,8 +1,8 @@
-package com.riprod.patchly.engine.directive;
+package com.riprod.patchly.core.directive;
 
-import com.riprod.patchly.engine.directive.builtins.MatchDirective;
-import com.riprod.patchly.engine.directive.builtins.PriorityDirective;
-import com.riprod.patchly.engine.directive.builtins.RequiresDirective;
+import com.riprod.patchly.core.directive.builtins.MatchDirective;
+import com.riprod.patchly.core.directive.builtins.PriorityDirective;
+import com.riprod.patchly.core.directive.builtins.RequiresDirective;
 import com.riprod.patchly.registry.KeyValidator;
 import com.riprod.patchly.registry.Registry;
 

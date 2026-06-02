@@ -2,9 +2,13 @@ package com.riprod.patchly.engine.compile;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.riprod.patchly.engine.JsonDeepMerge;
-import com.riprod.patchly.engine.MergeTable;
-import com.riprod.patchly.engine.directive.PatchContext;
+import com.riprod.patchly.core.JsonDeepMerge;
+import com.riprod.patchly.core.MergeTable;
+import com.riprod.patchly.core.compile.BaseResolver;
+import com.riprod.patchly.core.compile.CompileResult;
+import com.riprod.patchly.core.compile.PatchCompiler;
+import com.riprod.patchly.core.compile.PatchSource;
+import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.source.BasePolicy;
 import com.riprod.patchly.source.SourceKind;
 import com.riprod.patchly.source.kinds.PatchKind;
@@ -96,7 +100,8 @@ class PatchCompilerTest {
 
     @Test
     void nestedObjectRequiresGatesFieldWhenAbsent() {
-        // $Requires inside a nested object value: missing pack leaves the base field untouched
+        // $Requires inside a nested object value: missing pack leaves the base field
+        // untouched
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH,
                         "{ \"TranslationProperties\": { \"$Requires\": \"Some:Mod\", \"Name\": \"patched\" } }")),
@@ -128,7 +133,8 @@ class PatchCompilerTest {
 
     @Test
     void priorityWinsOverLoadOrder() {
-        // lower load index would normally apply last; higher $Priority overrides that ordering
+        // lower load index would normally apply last; higher $Priority overrides that
+        // ordering
         CompileResult out = compile(List.of(
                 source("late.patch", 9, "Foo.json", PATCH, "{ \"$Priority\": 100, \"V\": \"high\" }"),
                 source("early.patch", 0, "Foo.json", PATCH, "{ \"V\": \"low\" }")), t -> parse("{}"), ALL_PRESENT);

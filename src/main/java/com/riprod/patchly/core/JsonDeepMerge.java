@@ -1,8 +1,8 @@
-package com.riprod.patchly.engine;
+package com.riprod.patchly.core;
 
 import com.google.gson.JsonObject;
-import com.riprod.patchly.engine.directive.DirectiveRegistry;
-import com.riprod.patchly.engine.directive.PatchContext;
+import com.riprod.patchly.core.directive.DirectiveRegistry;
+import com.riprod.patchly.core.directive.PatchContext;
 
 import javax.annotation.Nonnull;
 

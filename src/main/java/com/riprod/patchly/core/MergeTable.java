@@ -1,10 +1,10 @@
-package com.riprod.patchly.engine;
-
-import com.riprod.patchly.engine.directive.DirectiveTable;
-import com.riprod.patchly.engine.directive.ElementDirective;
+package com.riprod.patchly.core;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+
+import com.riprod.patchly.core.directive.DirectiveTable;
+import com.riprod.patchly.core.directive.ElementDirective;
 
 public record MergeTable(@Nonnull OperatorTable operators, @Nonnull DirectiveTable directives) {
     @Nonnull

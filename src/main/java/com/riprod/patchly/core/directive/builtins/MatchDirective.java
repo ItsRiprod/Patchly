@@ -1,10 +1,10 @@
-package com.riprod.patchly.engine.directive.builtins;
+package com.riprod.patchly.core.directive.builtins;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.riprod.patchly.engine.LocatorPlan;
-import com.riprod.patchly.engine.directive.ElementDirective;
+import com.riprod.patchly.core.LocatorPlan;
+import com.riprod.patchly.core.directive.ElementDirective;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
