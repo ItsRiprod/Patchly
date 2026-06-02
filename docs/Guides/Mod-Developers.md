@@ -34,8 +34,8 @@ val shaded by configurations.creating
 
 dependencies {
     // compile against the API, and mark it for shading into the final jar
-    shaded(files("deps/Patchly-3.1.0.jar"))
-    implementation(files("deps/Patchly-3.1.0.jar"))
+    shaded(files("deps/Patchly-3.1.1.jar"))
+    implementation(files("deps/Patchly-3.1.1.jar"))
 }
 
 tasks.shadowJar {
