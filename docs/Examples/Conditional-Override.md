@@ -1,24 +1,22 @@
 ---
-title: "Weapon: Local AND Cross-Mod"
+title: "Conditional Overrides"
 order: 1
 published: true
 draft: false
 ---
-# Weapon: Local AND Cross-Mod
+# Conditional Overrides
 
 You ship an iron sword. If a player also runs the Hexcode mod, you want that same sword to become a castable hexstaff. With one item file, no fork.
 
-## Wanted
+## Goal
 
 - One item: `Weapon_Sword_Iron`.
 - When Hexcode is NOT installed: it stays an ordinary iron sword (swing, guard, signature).
 - When `Riprod:Hexcode` IS installed: it becomes a hexstaff (right-click opens casting, ability keys, etc.).
 - No second item id, no duplicate file. The base asset never changes.
 
-## Before
-
-Without Patchly, making this item dual-purpose means your override file has to restate the whole asset, because Hytale does not deep-merge nested blocks. Here is the entire `Server/Item/Items/Weapon/Sword/Weapon_Sword_Iron.json` you would copy and maintain, with the two parts you actually wanted to change marked:
-
+## The Asset
+`Server/Item/Items/Weapon/Sword/Weapon_Sword_Iron.json`
 ```json
 {
   "Parent": "Template_Weapon_Sword", // you want this to become "Template_HexStaff" when Hexcode is present
@@ -241,5 +239,3 @@ Net: the same file is a sword on one server and a hexstaff on another.
 
 - `$Requires` is the whole trick. It is a guard, not a merge field: if the named pack is missing the patch never runs, so the base asset is your default and the patch is the cross-mod upgrade. Use `Group:Name` form, here `Riprod:Hexcode`.
 - Setting a key to `null` deletes it. That is how you clear an inherited or local block so a new `Parent` can fill it in cleanly. See [Removing-Values](Removing-Values) for the delete rule on its own.
-- This is the heavy hammer: a whole-template swap that changes what the item fundamentally is. If you only want to retarget one slot (say, make `Secondary` cast a spell while the rest stays a sword), patch a single interaction instead. See [Replace-Interaction](Replace-Interaction) for that surgical approach.
-- Patchly re-merges on every pack register, so it does not matter whether Hexcode loads before or after your pack. The `$Requires` check is re-evaluated each time.

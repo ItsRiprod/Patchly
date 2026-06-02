@@ -6,15 +6,23 @@ draft: false
 ---
 # Patchly - The Perfect Pure Patching Plugin
 
-**Patch JSON assets instead of rewriting them. Zero dependencies.**
+**Patch JSON assets instead of rewriting them**
 
-Patchly lets one pack reach into another pack's asset and change only the fields it cares about, leaving everything else untouched. You drop a `.patch` file next to the asset you want to change, and Patchly deep-merges it onto the resolved original.
+Patchly lets one pack reach into another pack's asset and change only the fields it cares about, leaving everything else untouched. You drop a `.patch` file next to the asset you want to change, and Patchly merges it onto the resolved original.
 
-## Quickstart (under a minute)
+## TL;DR
 
-1. Put `Patchly-X.Y.Z.jar` in your server's `mods/` folder. No config.
-2. In your pack, create a file at the same path as the asset you want to change, swapping `.json` for `.patch`. To change `Server/Item/Items/Armor/Iron/Armor_Iron_Head.json`, make `Server/Item/Items/Armor/Iron/Armor_Iron_Head.patch`.
-3. Put only the fields you want to change inside it:
+In your pack, create a file at the same path as the asset you want to change, swapping `.json` for `.patch`.
+
+To add the mana stat to
+
+`Server/Item/Items/Armor/Iron/Armor_Iron_Head.json`
+
+make this in your pack
+
+`Server/Item/Items/Armor/Iron/Armor_Iron_Head.patch`
+
+and set it to
 
 ```json
 {
@@ -26,234 +34,38 @@ Patchly lets one pack reach into another pack's asset and change only the fields
 }
 ```
 
-4. Boot the server. Patchly merges your patch onto the real iron helmet, adds `Mana` next to the existing `Health`, and leaves everything else alone.
-
-That is the whole 80% case.
-
-## For setting up and getting started...
-
-| You are... | You ship... | Go to |
-|---|---|---|
-| An asset-only pack (JSON, no Java) | `.patch` files + a manifest dependency on Patchly | [For Pack Developers](Guides/Pack-Developers) |
-| A Java plugin that wants patching built in | Patchly shaded into your jar + a few `PatchManager` calls | [For Mod Developers](Guides/Mod-Developers) |
-| Already shipping Patchly 2.x | The smaller `PatchManager` API and version-aware election | [Upgrading 2.x to 3.x](Guides/Migration-2-to-3) |
-
-Everything below is reference. Skip ahead to your guide and come back when you hit something.
-
----
+That's it. You've now patched some armor!
 
 # Patch syntax
 
 A `.patch` is plain JSON. Every key you write is merged onto the matching key in the resolved base asset. Here is every rule at a glance, then each one explained.
 
-| Feature | Write this | Result |
+| Feature | Example | What it does |
 |---|---|---|
 | Deep merge (objects) | `{ "A": { "B": 1 } }` | Only leaf `B` changes; sibling keys survive. |
 | Replace array (default) | `"Categories": [...]` | Discards the parent's array, uses yours. |
 | Append to array | `"Categories+": [...]` | Keeps the parent's entries, adds yours at the end. |
 | Prepend to array | `"Categories-": [...]` | Keeps the parent's entries, adds yours at the front. |
 | Fill if absent | `"Mana?": [...]` | Writes the value only if the key is missing; otherwise the base wins. |
-| Extend by index | `"Children~": [ {}, {...} ]` | Merges into the base element at each position; `{}` changes nothing. |
-| Extend by field | `"Children~": [ { "$Match": "Id", "Id": "Tools", ... } ]` | Finds the element whose field matches and merges into it. |
+| Extend by index | `"Recipes~": [ {}, {...} ]` | Merges into the base element at each position; `{}` changes nothing. |
+| Extend by field | `"Children+": [ { "$Match": "Id", "Id": "Tools", ... } ]` | Finds the element whose field matches and merges into it. |
 | Delete a key | `"DamageResistance": null` | Removes that key from the merged asset. |
 | Gate on packs | `"$Requires": "Group:Name"` or `"Group:Name:>=1.2.0"` or `[...]` | Patch applies only if all named packs are installed (and satisfy the optional version range); otherwise skipped with a log line. |
 | Win on conflicts | `"$Priority": 100` | Integer, default 0. Higher applies last and wins on conflicting fields. |
-| Free notes | `"$Comment": "..."` | Any top-level `$`-key is metadata, stripped before merge. |
 
-## Deep merge (objects)
+An overview of their implementation is found [here](Examples/index)
 
-Objects merge recursively. Only the leaf values you specify change:
-
-```json
-{ "Armor": { "StatModifiers": { "Mana": [{ "Amount": 126, "CalculationType": "Additive" }] } } }
-```
-
-`Mana` is added; sibling keys (`Health`, `DamageResistance`, `ArmorSlot`) survive.
-
-## Replace vs append (arrays)
-
-Arrays **replace** by default. To **append** to the existing array, suffix the key with `+`:
-
-```json
-{
-  "BlockType": {
-    "Bench": {
-      "Categories+": [
-        { "Id": "Arcane_Hexcode", "Icon": "...", "Name": "..." }
-      ]
-    }
-  }
-}
-```
-
-The parent's existing `Categories` entries stay; this one is added to the end. (`"Categories": [...]` with no `+` would discard the parent's entries.)
-
-To **prepend** instead, suffix the key with `-`. Your entries land at the FRONT, in the order you wrote them, and the parent's entries follow:
-
-```json
-{ "Children-": [ { "Id": "Hexcode", "Name": "hexcode.itemcategory.hexcode.name" } ] }
-```
-
-`-` is fully symmetric with `+`: it creates the array if absent, ignores non-array values, and supports `$Match` (a hit merges in place, a miss prepends). It means **prepend**, not remove. See [Prepend to an Array](Examples/Prepend-Array).
-
-## Fill only if a key is missing
-
-Deep merge and `+` always overwrite. To write a value **only when the target does not already have that key**, suffix the key with `?`. If the key is present, the base wins and your value is dropped:
-
-```json
-{ "Armor": { "StatModifiers": { "Mana?": [{ "Amount": 200, "CalculationType": "Additive" }] } } }
-```
-
-If the item already defines `Mana`, it keeps it; if it has none, it gets `200`. `?` checks key presence, so it works for any value type (scalar, array, object) and is decided per key. This is the only way to let the base win - `$Priority` only orders patches against each other, never against the base. See [Add a Stat Only If It Is Missing](Examples/Fill-If-Absent).
-
-## Extend an array element
-
-`+` and replace treat an array as a whole. To reach INTO an existing element and merge fields into it, suffix the key with `~`.
-
-By default `~` is **positional**: the patch element at each position merges into the base element at the same position. An empty `{}` merges nothing, so it naturally skips a slot:
-
-```json
-{ "Children~": [ {}, { "Order": 5 } ] }
-```
-
-This leaves the first element alone and sets `Order` on the second.
-
-When the array is keyed by a field (most Hytale arrays use `Id`), use **`$Match`** to target by that field instead of by position. `$Match` names the field to match on; there is no default, and nothing is matched implicitly:
-
-```json
-{
-  "Children~": [
-    {
-      "$Match": "Id",
-      "Id": "Tools",
-      "SubCategories+": [
-        { "Id": "Staffs", "Name": "server.ui.itemcategory.subcategory.staffs.name", "Order": 100 }
-      ]
-    }
-  ]
-}
-```
-
-This finds the `Children` element whose `Id` is `Tools` and merges into it. The nested `SubCategories+` then appends, so `Tools` keeps its own fields and every sibling category is untouched. `$Match` is stripped from the output.
-
-If `$Match` finds no match, the suffix decides the fallback: under `~` it merges at the element's index, under `+` it appends (an upsert), under a bare key it does nothing. Match works the same under any of those suffixes.
-
-## Removing a key
-
-A `null` value **deletes** that key from the merged asset:
-
-```json
-{ "Armor": { "DamageResistance": null } }
-```
-
-The merged `Armor_Iron_Head` will have no `DamageResistance` block at all.
-
-## `$Requires` - only apply if certain packs are installed
-
-A string, or an array of strings (all must be present). Each is matched against a pack's `Group:Name`:
-
-```json
-{ "$Requires": "Riprod:Hexcode", "Armor": { } }
-```
-
-```json
-{ "$Requires": ["Riprod:Hexcode", "Author:SomeOtherPack"], "Armor": { } }
-```
-
-If any required pack is missing, the patch is **skipped** with a log line, so you can safely ship cross-mod patches that only activate when both mods are present. There is no exclude or negative form today.
-
-You can also append an optional semver range after the `Group:Name` to gate on the pack's version. It accepts the full range syntax (`>=`, `>`, `<=`, `<`, `=`, `^`, `~`, hyphen ranges, and `||` alternatives):
-
-```json
-{ "$Requires": "Riprod:Hexcode:>=0.5.0", "Armor": { } }
-```
-
-The patch is skipped if the pack is present but its version falls outside the range. Omit the range to check presence only. A malformed range logs a warning and falls back to presence-only.
-
-## `$Priority` - decide the winner on conflicts
-
-An integer, default `0`. Patches apply in ascending order, so **higher priority applies last and wins** on directly-conflicting fields. Tie-break is pack load order.
-
-```json
-{
-  "$Priority": 100,
-  "Armor": { "StatModifiers": { "Mana": [{ "Amount": 9999, "CalculationType": "Additive" }] } }
-}
-```
-
-Two mods patching the same field both apply, but the higher `$Priority` writes last. Lower-priority `+` appends still stack onto fields the higher patch did not touch.
-
-## Reserved `$` keys
-
-Any **top-level** key starting with `$` is metadata. It is stripped before merge and never written to the asset. `$Requires` and `$Priority` are the two with meaning today; `$Comment` (or any other `$Foo`) is free for your own notes:
-
-```json
-{ "$Comment": "buff iron helm mana for the mage build", "Armor": { } }
-```
-
----
-
-# Why this works (for the curious)
-
-You do not need this section to use Patchly. It explains the problem Patchly solves, for anyone who wants to know why a plain JSON override is not enough.
-
-Take a real asset, `Armor_Iron_Head.json`. The iron helmet ships with this `Armor` block:
-
-```json
-{
-  "Armor": {
-    "ArmorSlot": "Head",
-    "DamageResistance": {
-      "Physical":   [{ "Amount": 0.05, "CalculationType": "Multiplicative" }],
-      "Projectile": [{ "Amount": 0.05, "CalculationType": "Multiplicative" }]
-    },
-    "StatModifiers": {
-      "Health": [{ "Amount": 9, "CalculationType": "Additive" }]
-    }
-  }
-}
-```
-
-You only want to add a Mana bonus. The obvious move is `Parent: "super"` and a restated `Armor` block:
-
-```json
-{
-  "Parent": "super",
-  "Armor": {
-    "StatModifiers": {
-      "Mana": [{ "Amount": 126, "CalculationType": "Additive" }]
-    }
-  }
-}
-```
-
-This looks right. It is not. Hytale's `Parent` inheritance merges only at the outer asset level. Nested codec fields like `Armor` use `.append(...)`, not `.appendInherited(...)`, so your `Armor` block replaces the parent's wholesale:
-
-| Field | What happens |
-|---|---|
-| `Health: +9` | Gone. Your `StatModifiers` replaced the parent's. |
-| `DamageResistance` | Null. You did not restate it. |
-| `ArmorSlot` | Falls back to codec default `"Head"`. Fine here, but on a chestpiece this would quietly turn it into a helmet. |
-
-No error. No warning. Just a helmet that lost its armor.
-
-Patchly fixes this by reading the **fully resolved** `Armor_Iron_Head.json`, deep-merging your patch field by field, and writing the result into a synthetic override pack that wins. `Mana` lands inside the existing `StatModifiers` next to `Health`; `DamageResistance` and `ArmorSlot` are never touched. You write the diff and Patchly keeps everything else.
-
-## Where things land
-
-At load, Patchly walks every registered pack, resolves the latest version of each target asset, deep-merges all matching `.patch` files onto it, and writes the result into a synthetic override pack that takes precedence.
+# Questions and Answers
 
 | Question | Answer |
 |---|---|
-| Where do I put the `.patch`? | Same path as the target, `.json` swapped for `.patch`. To patch `Armor_Iron_Head.json`, ship `Server/Item/Items/Armor/Iron/Armor_Iron_Head.patch`. |
-| Which packs can be patched? | Every registered pack: folder, `.zip`, and `.jar`. |
-| Does it hot-reload? | Folder packs re-merge live on `.patch` edit. Zip/jar packs apply once at load. |
-| Where does the merged output go? | `mods/<group>_<name>_PatcherOverrides/`, wiped on every cold start. |
-| What about that "Skipping pack ... missing or invalid manifest.json" boot line? | Benign. The synthetic pack is registered programmatically, not scanned from disk. |
+| Where do I put the `.patch`? | Same path as what you want to patch into. `.json` swapped for `.patch`. |
+| Which packs can be patched? | Every registered pack: `folder`, `.zip`, and `.jar`. |
+| Does it hot-reload? | Folder packs re-merge live on `.patch` edit. Zip/jar packs apply once at |
 
 ---
 
 # Next steps
 
-- **[For Pack Developers](Guides/Pack-Developers)** - ship `.patch` files in an asset-only pack and require Patchly as a dependency.
-- **[For Mod Developers](Guides/Mod-Developers)** - bundle Patchly directly into your Java plugin with Gradle Shadow.
+- **[For Pack Developers](Pack-Developers)** - ship `.patch` files in an asset-only pack and require Patchly as a dependency.
+- **[For Mod Developers](Mod-Developers)** - bundle Patchly directly into your Java plugin with Gradle Shadow.

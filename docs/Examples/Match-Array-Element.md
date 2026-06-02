@@ -11,18 +11,16 @@ element and add fields to it. The real case: the Creative Library's `Items.json`
 `Children` array of categories, and you want to add `SubCategories` to the stock `Tools`
 category without disturbing the other six categories.
 
-## Wanted
+## Goal
 
 - Add a `SubCategories` list to the existing `{ "Id": "Tools" }` element.
 - Leave `Weapons`, `Armors`, `Foods`, `Potions`, `Recipes`, `Ingredients` and the `Tools`
   element's own `Name`/`Icon` exactly as they are.
 
-## Before
+## The Asset
+`Server/Item/Category/CreativeLibrary/Items.json`
 
-Without an element-targeting operator, your only tools are replace (copy the whole array and
-restate every element) or append (add a new sibling category, which is the workaround that
-puts your entries in their own tab instead of under `Tools`). Here is the entire
-`Server/Item/Category/CreativeLibrary/Items.json`, with the element you want marked:
+Without an element-targeting operator your only options are replace (restate every element) or append (a new sibling category in its own tab, not under `Tools`).
 
 ```json
 {
@@ -74,7 +72,7 @@ Path: `Server/Item/Category/CreativeLibrary/Items.patch`
 
 ```json
 {
-  "Children~": [
+  "Children+": [
     {
       "$Match": "Id",
       "Id": "Tools",
@@ -127,5 +125,5 @@ This leaves index 0 alone and sets `Enabled` on index 1.
   (upsert), a bare key does nothing. Pair `$Match` with `~` or `+` when you want a defined
   fallback.
 - `SubCategories+` inside the matched element shows that operators compose to any depth. See
-  the [syntax reference](../) for the full ruleset.
+  the [syntax reference](index) for the full ruleset.
 - A plain array with no `$Match` and no `~`/`+` still replaces wholesale, exactly as before.

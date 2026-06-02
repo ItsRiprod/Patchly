@@ -8,17 +8,17 @@ draft: false
 
 You want your weapon to show the `I_Fire_Blue` particle, but the particle system that defines it ships in a separate pack that loads after yours. Done naively, your item asset resolves before the particle exists.
 
-## Wanted
+## Goal
 
 - Your item displays the `I_Fire_Blue` particle.
-- The particle system itself lives in a different pack (`icarus:legacy`) that loads after your item asset, defined at `Server/Particles/.../I_Fire_Blue.particlesystem`.
+- The particle system itself lives in a different pack (`Riprod:Hexcode`) that loads after your item asset, defined at `Server/Particles/.../I_Fire_Blue.particlesystem`.
 - The stock particles already on the item stay intact.
 
 The key fact: particle systems are `.particlesystem` files and are NOT patchable. Patchly only patches `.json`. What you patch is the `.json` item asset that REFERENCES a particle by its `SystemId` string. The string is resolved against the registered particle systems at merge time.
 
-## Before
+## The Asset
 
-Without Patchly, adding one particle reference means your override file has to restate the whole asset, because Hytale does not deep-merge nested blocks. Here is the entire `Server/Item/Items/Weapon/Sword/Template_Weapon_Sword.json` you would copy and maintain, with the line you actually wanted to extend marked:
+`Server/Item/Items/Weapon/Sword/Template_Weapon_Sword.json`
 
 ```json
 {
@@ -148,15 +148,15 @@ Without Patchly, adding one particle reference means your override file has to r
 }
 ```
 
-`SystemId` is a string id. A stock system it names lives at `Server/Particles/.../Sword_Signature_Ready.particlesystem`; the one you want to add, `I_Fire_Blue`, lives at `Server/Particles/.../I_Fire_Blue.particlesystem` inside the `icarus:legacy` pack.
+`SystemId` is a string id. A stock system it names lives at `Server/Particles/.../Sword_Signature_Ready.particlesystem`; the one you want to add, `I_Fire_Blue`, lives at `Server/Particles/.../I_Fire_Blue.particlesystem` inside the `Riprod:Hexcode` pack.
 
 ## The patch
 
-Goes at the item's path with `.json` swapped for `.patch`. Use `Particles+` to APPEND your reference into the existing condition's array instead of replacing the stock particles. `$Requires` keeps the reference out until `icarus:legacy` is actually present.
+Goes at the item's path with `.json` swapped for `.patch`. Use `Particles+` to APPEND your reference into the existing condition's array instead of replacing the stock particles. `$Requires` keeps the reference out until `Riprod:Hexcode` is actually present.
 
 ```json
 {
-  "$Requires": "icarus:legacy",
+  "$Requires": "Riprod:Hexcode",
   "ItemAppearanceConditions": {
     "SignatureEnergy": [
       {
@@ -179,13 +179,13 @@ Adjust the condition key (`SignatureEnergy` here) and the entry shape to match t
 
 - The `SignatureEnergy` condition's `Particles` array now holds both the stock `Sword_Signature_Ready` entry AND your `I_Fire_Blue` entry.
 - The stock particle survives because `Particles+` appends rather than replaces.
-- The merged item is written after `icarus:legacy` registers, so by the time the asset resolves, the `I_Fire_Blue` system already exists and the `SystemId` string resolves.
+- The merged item is written after `Riprod:Hexcode` registers, so by the time the asset resolves, the `I_Fire_Blue` system already exists and the `SystemId` string resolves.
 
-Why the load order works out: Patchly re-runs its merge on every `AssetPackRegisterEvent`. When `icarus:legacy` registers, the merge re-runs and the merged item is (re)written with `I_Fire_Blue` present. `$Requires: "icarus:legacy"` means the reference is skipped on any earlier pass when `icarus:legacy` is not yet loaded, so you never write a dangling `SystemId`.
+Why the load order works out: Patchly re-runs its merge on every `AssetPackRegisterEvent`. When `Riprod:Hexcode` registers, the merge re-runs and the merged item is (re)written with `I_Fire_Blue` present. `$Requires: "Riprod:Hexcode"` means the reference is skipped on any earlier pass when `Riprod:Hexcode` is not yet loaded, so you never write a dangling `SystemId`.
 
 ## Notes
 
 - You CANNOT patch the `.particlesystem` file itself (yet). It is not JSON. If the particle system does not exist in any pack, ship its `.particlesystem` as a NORMAL full asset file in your pack. Patchly only wires the JSON reference to it.
 - The same rule applies to models (`.blockymodel`), textures (`.png`), and lang (`.lang`): patch the JSON that REFERENCES the binary asset, never the binary asset. Ship those as normal full files.
-- Use `Particles+`, not `Particles`, unless you genuinely intend to drop the stock particles. A bare `Particles` array REPLACES the whole array. See the [syntax reference](../) for the append rules and [Removing Values](Removing-Values) for deletion.
-- Use `$Requires` whenever your patch names an id that only exists once another pack is loaded. It guards against writing references the engine cannot resolve yet. Full meta-key reference is in the [syntax reference](../).
+- Use `Particles+`, not `Particles`, unless you genuinely intend to drop the stock particles. A bare `Particles` array REPLACES the whole array. See the [syntax reference](index) for the append rules and [Removing Values](Removing-Values) for deletion.
+- Use `$Requires` whenever your patch names an id that only exists once another pack is loaded. It guards against writing references the engine cannot resolve yet. Full meta-key reference is in the [syntax reference](index).

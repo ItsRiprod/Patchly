@@ -12,15 +12,15 @@ The `-` suffix prepends: it inserts before the existing elements, preserving the
 them in. The real case: you want hexcode's Arcane category to be the FIRST tab in the Creative
 Library, not the last.
 
-## Wanted
+## Goal
 
 - Put a new `Hexcode` category at the front of the Creative Library's top-level `Children`.
 - Keep `Tools`, `Weapons`, `Armors` and the rest exactly as they are, just after yours.
 
-## Before
+## The Asset
+`Server/Item/Category/CreativeLibrary/Items.json`
 
-This is the entire `Server/Item/Category/CreativeLibrary/Items.json`. The `Children` array is the
-tab order, top to bottom; you want to land before the first entry:
+The `Children` array is the tab order, top to bottom; you want to land before the first entry.
 
 ```json
 {
@@ -28,7 +28,7 @@ tab order, top to bottom; you want to land before the first entry:
   "Order": 2,
   "Children": [
     {
-      "Id": "Tools",                                  // currently first; you want to sit before it
+      "Id": "Tools",  // currently first; you want to sit before it
       "Name": "server.ui.itemcategory.tools",
       "Icon": "Icons/ItemCategories/Items-Tools.png"
     },
@@ -128,4 +128,4 @@ matches nothing, so it is prepended. `$Match` is stripped from the output.
   restate the array with only the survivors (see [Remove a Field or Recipe](Removing-Values)).
 - Prepend and append are independent: `Children-` and `Children+` in the same patch both apply,
   yielding `[ prepended..., base..., appended... ]`. See the array rules in the
-  [syntax reference](../).
+  [syntax reference](index).

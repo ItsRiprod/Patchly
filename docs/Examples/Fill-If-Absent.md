@@ -13,18 +13,17 @@ what the `?` fill-if-absent suffix does. The real case: hexcode wants every armo
 some Mana and Volatility, but armor that already carries its own Mana from another mod must be
 left exactly as the author tuned it.
 
-## Wanted
+## Goal
 
 - Give `Armor_Bronze_Hands` a `Volatility` modifier, because it has none.
 - Do NOT overwrite its `Mana` modifier, because the item already defines one.
 - Touch nothing else.
 
-## Before
+The intention here is to have a "soft add" - so that if "Mana" is NOT defined, it can be added here. But if it is, to NOT override it.
 
-This is the entire `Server/Item/Items/Armor/Bronze/Armor_Bronze_Hands.json`. Note that
-`StatModifiers` already has a `Mana` entry (the part you must NOT clobber) and no `Volatility`
-entry (the part you want to add):
+## The Asset
 
+`Server/Item/Items/Armor/Bronze/Armor_Bronze_Hands.json`
 ```json
 {
   "TranslationProperties": {
@@ -44,7 +43,7 @@ entry (the part you want to add):
     "ArmorSlot": "Hands",
     "BaseDamageResistance": 0,
     "StatModifiers": {
-      "Mana": [                                         // already present - must survive untouched
+      "Mana": [  // already present
         {
           "Amount": 50,
           "CalculationType": "Additive"
@@ -66,8 +65,7 @@ entry (the part you want to add):
 ```
 
 ## The patch
-
-Path: `Server/Item/Items/Armor/Bronze/Armor_Bronze_Hands.patch`
+`Server/Item/Items/Armor/Bronze/Armor_Bronze_Hands.patch`
 
 ```json
 {
@@ -88,12 +86,11 @@ Path: `Server/Item/Items/Armor/Bronze/Armor_Bronze_Hands.patch`
 has `Mana`, so the base wins and the patch's `200` is dropped. It has no `Volatility`, so that
 one is written.
 
-## After
+## Resulting Asset
 
 - `Mana` is still the item's own `50`. The patch's `200` never landed, because the key was
   already there.
 - `Volatility` is now `26`, added because the item had none.
-- The `?` is stripped; the merged asset has plain `Mana` and `Volatility` keys.
 
 ```json
 {
@@ -102,10 +99,16 @@ one is written.
     "BaseDamageResistance": 0,
     "StatModifiers": {
       "Mana": [
-        { "Amount": 50, "CalculationType": "Additive" }
+        {
+          "Amount": 50,
+          "CalculationType": "Additive"
+        }
       ],
       "Volatility": [
-        { "Amount": 26, "CalculationType": "Additive" }
+        {
+          "Amount": 26,
+          "CalculationType": "Additive"
+        }
       ]
     }
   }
@@ -122,4 +125,4 @@ one is written.
 - Contrast with `$Priority`: priority only orders patches against EACH OTHER, never against the
   base. A low `$Priority` still overwrites the base. `?` is the only way to let the base win.
 - Ship the same `?` patch across a whole armor set: pieces that lack the stat get your default,
-  pieces that already tune it keep theirs. See the array rules in the [syntax reference](../).
+  pieces that already tune it keep theirs. See the array rules in the [syntax reference](index).

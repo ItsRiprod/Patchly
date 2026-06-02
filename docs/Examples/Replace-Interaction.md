@@ -8,16 +8,16 @@ draft: false
 
 You ship a normal sword. You want its right-click to open Hexcode's spell casting instead of the vanilla guard, but only when Hexcode is installed, and you want everything else about the sword left alone.
 
-## Wanted
+## Goal
 
 - The sword stays a sword: same identity, same `Parent`, same `Primary` swing, same `Ability1` signature.
 - Right-click (`Secondary`) opens Hexcode's casting interaction instead of the guard.
 - Only happens when `Riprod:Hexcode` is installed.
 - One slot changes. Nothing else.
 
-## Before
+## The Asset
 
-Without Patchly, repointing one interaction slot means your override file has to restate the whole sword, because Hytale does not deep-merge nested blocks. Here is the entire `Server/Item/Items/Weapon/Sword/Template_Weapon_Sword.json` you would copy and maintain, with the one line you actually wanted to change marked:
+`Server/Item/Items/Weapon/Sword/Template_Weapon_Sword.json`
 
 ```json
 {
@@ -189,5 +189,5 @@ When Hexcode is absent, `$Requires` is not satisfied, Patchly skips the patch, a
 ## Notes
 
 - `$Requires: "Riprod:Hexcode"` is not optional here. If you point a slot at an id that no installed pack provides, that slot breaks. Gating on the pack that ships the id guarantees the target exists before you reference it.
-- This is the surgical opposite of the whole-template reparent in [Dual-Template-Weapon](Dual-Template-Weapon). There you swap `Parent` and null the local interactions so the new template owns the whole behavior set. Here you keep the item exactly as it is and retarget a single slot.
+- This is the surgical opposite of the whole-template reparent in [Conditional-Override](Conditional-Override). There you swap `Parent` and null the local interactions so the new template owns the whole behavior set. Here you keep the item exactly as it is and retarget a single slot.
 - Object keys merge; they do not replace. That is why naming only `Secondary` leaves `Primary` and `Ability1` intact. See [Removing-Values](Removing-Values) for how `null` would instead delete a slot.
