@@ -72,7 +72,7 @@ public final class MyPlugin extends JavaPlugin {
 
 ## 3. Ship your `.patch` files
 
-Put `.patch` files in your pack tree exactly as a pack developer would: mirror the target asset's path with a `.patch` extension. See **[For Pack Developers](Pack-Developers)** and the [syntax reference](../) for the merge rules (`+` append, `null` removal, `$Requires`, `$Priority`).
+Put `.patch` files in your pack tree exactly as a pack developer would: mirror the target asset's path with a `.patch` extension. See **[For Pack Developers](Pack-Developers)** and the [syntax reference](../) for the merge rules (`+` append, `-` prepend, `?` fill-if-absent, `null` removal, `$Requires`, `$Priority`).
 
 That is the working setup. The sections below explain why each piece is shaped this way.
 

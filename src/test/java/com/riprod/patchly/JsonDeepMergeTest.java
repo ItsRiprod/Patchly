@@ -152,4 +152,107 @@ class JsonDeepMergeTest {
         assertEquals(1, arr(out, "Items").size());
         assertEquals(2, arr(out, "Items").get(0).getAsJsonObject().get("v").getAsInt());
     }
+
+    // --- fill-if-absent ? ---
+
+    @Test
+    void fillAddsKeyWhenAbsent() {
+        JsonObject out = merge("{ \"a\": 1 }", "{ \"b?\": 2 }");
+        assertEquals(1, out.get("a").getAsInt());
+        assertEquals(2, out.get("b").getAsInt());
+    }
+
+    @Test
+    void fillLeavesExistingScalarUntouched() {
+        JsonObject out = merge("{ \"b\": 1 }", "{ \"b?\": 2 }");
+        assertEquals(1, out.get("b").getAsInt());
+    }
+
+    @Test
+    void fillLeavesExistingArrayUntouched() {
+        JsonObject out = merge("{ \"Mana\": [ { \"Amount\": 5 } ] }", "{ \"Mana?\": [ { \"Amount\": 200 } ] }");
+        assertEquals(1, arr(out, "Mana").size());
+        assertEquals(5, arr(out, "Mana").get(0).getAsJsonObject().get("Amount").getAsInt());
+    }
+
+    @Test
+    void fillAddsArrayWhenAbsent() {
+        JsonObject out = merge("{}", "{ \"Mana?\": [ { \"Amount\": 200 } ] }");
+        assertEquals(1, arr(out, "Mana").size());
+        assertEquals(200, arr(out, "Mana").get(0).getAsJsonObject().get("Amount").getAsInt());
+    }
+
+    @Test
+    void fillLeavesExistingObjectUntouched() {
+        JsonObject out = merge("{ \"o\": { \"k\": 1 } }", "{ \"o?\": { \"k\": 2, \"extra\": 3 } }");
+        assertEquals(1, out.getAsJsonObject("o").get("k").getAsInt());
+        assertFalse(out.getAsJsonObject("o").has("extra"));
+    }
+
+    @Test
+    void fillResolvesPerKeyInsideNestedObject() {
+        JsonObject out = merge(
+                "{ \"StatModifiers\": { \"Mana\": [ { \"Amount\": 5 } ] } }",
+                "{ \"StatModifiers\": { \"Mana?\": [ { \"Amount\": 200 } ], \"Volatility?\": [ { \"Amount\": 26 } ] } }");
+        JsonObject mods = out.getAsJsonObject("StatModifiers");
+        // Mana already present -> base kept
+        assertEquals(5, mods.getAsJsonArray("Mana").get(0).getAsJsonObject().get("Amount").getAsInt());
+        // Volatility absent -> filled
+        assertEquals(26, mods.getAsJsonArray("Volatility").get(0).getAsJsonObject().get("Amount").getAsInt());
+    }
+
+    // --- prepend - ---
+
+    @Test
+    void prependAddsBeforeExisting() {
+        JsonObject out = merge("{ \"a\": [1, 2] }", "{ \"a-\": [3] }");
+        assertEquals(3, arr(out, "a").size());
+        assertEquals(3, arr(out, "a").get(0).getAsInt());
+        assertEquals(1, arr(out, "a").get(1).getAsInt());
+        assertEquals(2, arr(out, "a").get(2).getAsInt());
+    }
+
+    @Test
+    void prependPreservesPatchOrder() {
+        JsonObject out = merge("{ \"a\": [1] }", "{ \"a-\": [2, 3] }");
+        assertEquals(2, arr(out, "a").get(0).getAsInt());
+        assertEquals(3, arr(out, "a").get(1).getAsInt());
+        assertEquals(1, arr(out, "a").get(2).getAsInt());
+    }
+
+    @Test
+    void prependCreatesWhenAbsent() {
+        JsonObject out = merge("{}", "{ \"a-\": [1] }");
+        assertEquals(1, arr(out, "a").size());
+        assertEquals(1, arr(out, "a").get(0).getAsInt());
+    }
+
+    @Test
+    void prependNonArrayIgnored() {
+        JsonObject out = merge("{ \"a\": [1] }", "{ \"a-\": 5 }");
+        assertEquals(1, arr(out, "a").size());
+        assertEquals(1, arr(out, "a").get(0).getAsInt());
+    }
+
+    @Test
+    void prependMatchHitMergesInPlace() {
+        JsonObject out = merge(
+                "{ \"Items\": [ { \"Id\": \"x\", \"v\": 1 } ] }",
+                "{ \"Items-\": [ { \"$Match\": \"Id\", \"Id\": \"x\", \"v\": 9 } ] }");
+        // hit merges into the matched base element, no new element prepended
+        assertEquals(1, arr(out, "Items").size());
+        assertEquals(9, arr(out, "Items").get(0).getAsJsonObject().get("v").getAsInt());
+        assertFalse(arr(out, "Items").get(0).getAsJsonObject().has("$Match"));
+    }
+
+    @Test
+    void prependMatchMissPrepends() {
+        JsonObject out = merge(
+                "{ \"Items\": [ { \"Id\": \"x\" } ] }",
+                "{ \"Items-\": [ { \"$Match\": \"Id\", \"Id\": \"new\", \"n\": 1 } ] }");
+        assertEquals(2, arr(out, "Items").size());
+        assertEquals("new", arr(out, "Items").get(0).getAsJsonObject().get("Id").getAsString());
+        assertEquals("x", arr(out, "Items").get(1).getAsJsonObject().get("Id").getAsString());
+        assertFalse(arr(out, "Items").get(0).getAsJsonObject().has("$Match"));
+    }
 }
