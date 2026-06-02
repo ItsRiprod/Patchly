@@ -22,6 +22,7 @@ If you have not read the [syntax reference](../) yet, skim it first: deep-merge,
 | 8 | [Add to a droplist or wire up a new one](Droplists) | `Containers+` append, repoint `DropList` |
 | 9 | [Change a crafting recipe's ingredients or bench](Recipe-Change) | nested object merge |
 | 10 | [Put an item into a creative or crafting category](Item-Into-Category) | `Categories+` on the item |
+| 11 | [Override one element inside an array](Override-Array-Element) | `~` element merge + `$Match` |
 
 ## What Patchly can and cannot patch (for now)
 
