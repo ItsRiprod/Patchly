@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public final class OverridePackRegistrar {
-    public static final String OVERRIDE_PACK_SUFFIX = ":Patchly";
+    public static final String OVERRIDE_PACK_SUFFIX = "_Patchly";
 
     private final PluginIdentifier owner;
     private final String packName;
