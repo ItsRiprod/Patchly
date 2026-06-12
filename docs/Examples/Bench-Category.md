@@ -1,5 +1,5 @@
 ---
-title: "Add a Crafting Bench Category"
+title: "Bench Category"
 order: 2
 published: true
 draft: false
@@ -8,16 +8,14 @@ draft: false
 
 The weapon bench ships with five crafting tabs. You want hexcode's Arcane tab to appear on that bench without touching the five that already exist.
 
-## Wanted
+## Goal:
 
-- A new "Arcane" tab on the stock weapon bench.
-- The five built-in tabs (Sword, Mace, Battleaxe, Daggers, Bow) untouched.
-- Your staff items show up under the new tab.
+- Add a new "Arcane" tab on the stock weapon bench.
+- The five built-in tabs (Sword, Mace, Battleaxe, Daggers, Bow) remain untouched.
 
-## Before
 
-Without Patchly, changing one field means your override file has to restate the whole asset, because Hytale does not deep-merge nested blocks. Here is the entire `Server/Item/Items/Bench/Bench_Weapon.json` you would copy and maintain, with the one line you actually wanted to touch marked:
-
+## The original asset
+`Server/Item/Items/Bench/Bench_Weapon.patch`
 ```json
 {
   "TranslationProperties": {
@@ -95,7 +93,7 @@ Without Patchly, changing one field means your override file has to restate the 
       "CompletedSoundEventId": "SFX_Weapon_Bench_Craft",
       "BenchUpgradeSoundEventId": "SFX_Workbench_Upgrade_Start_Default",
       "BenchUpgradeCompletedSoundEventId": "SFX_Workbench_Upgrade_Complete_Default",
-      "Categories": [ // you only want to ADD one entry to this list (the other 5 must survive)
+      "Categories": [ // you only want to ADD one entry to this list
         {
           "Id": "Weapon_Sword",
           "Icon": "Icons/CraftingCategories/Armory/Sword.png",
@@ -218,14 +216,18 @@ Without Patchly, changing one field means your override file has to restate the 
 
 ## The patch
 
-Put this at `Server/Item/Items/Bench/Bench_Weapon.patch` in YOUR pack:
+Put this at `Server/Item/Items/Bench/Bench_Weapon.patch` in your pack:
 
 ```json
 {
   "BlockType": {
     "Bench": {
       "Categories+": [
-        { "Id": "Arcane_Hexcode", "Icon": "Icons/CraftingCategories/Arcane/Arcane_Hexbook.png", "Name": "hexcode.workbench.benchCategories.hex" }
+        {
+          "Id": "Arcane_Hexcode",
+          "Icon": "Icons/CraftingCategories/Arcane/Arcane_Hexbook.png",
+          "Name": "hexcode.workbench.benchCategories.hex"
+        }
       ]
     }
   }
@@ -234,19 +236,6 @@ Put this at `Server/Item/Items/Bench/Bench_Weapon.patch` in YOUR pack:
 
 The key is `Categories+`, not `Categories`. The `+` appends to the array. A plain `Categories` would REPLACE the whole array and wipe out Sword, Mace, Battleaxe, Daggers, and Bow.
 
-## After
-
-The merged `Categories` array holds all six entries, in order: the five stock tabs first, then `Arcane_Hexcode` appended last.
-
-- What changed: a sixth category, `Arcane_Hexcode`, is now on the bench.
-- What survived: all five original categories, unchanged.
-
-Any item whose `Recipe.BenchRequirement` lists `Categories` of `["Arcane_Hexcode"]` with an `Id` of `"Weapon_Bench"` now appears under the new tab. The item side is a separate patch; see [Add an Item to a Category](Item-Into-Category).
-
 ## Notes
 
-- The `+` suffix is load-bearing. Without it the array is replaced, not extended. See the array rules in the [syntax reference](../).
-- hexcode ships this exact pattern as a real Patchly patch in the wild at `Server/Item/Items/Bench/Bench_Arcane.patch` (it appends the same `Arcane_Hexcode` category onto its own Arcane bench).
-- The `Name` value (`hexcode.workbench.benchCategories.hex`) is a lang key, not display text. The `.lang` file that defines it is shipped as a normal asset in your pack. Lang files are NOT patchable, so you cannot deep-merge translations onto another pack's `.lang`.
-- If your staff items live in a pack that may load after the weapon bench, you do not need to do anything special. Patchly re-merges on every pack registration, so the append resolves correctly regardless of load order.
-- If another pack also appends a tab and ordering matters, set `$Priority` on the patch that should apply last.
+- The `+` suffix is the key here. Without it the array is replaced, not extended. See the array rules in the [syntax reference](Introduction).

@@ -1,5 +1,5 @@
 ---
-title: "Give the Player a Stat (Mana)"
+title: "Player Stat"
 order: 3
 published: true
 draft: false
@@ -9,15 +9,15 @@ draft: false
 
 Hytale ships a Mana stat, but it is zeroed out. Vanilla mana only exists when an item grants it through `StatModifiers` (armor with `"Mana": [...]`). You want every player to have a base mana pool of 50 that regenerates on its own, with no mana-granting armor required.
 
-## Wanted
+## Goal
 
 - Mana starts at 50 and caps at 50 for everyone.
 - The existing regeneration (a tick every 0.2s) keeps working.
 - Item `StatModifiers` that add Mana still stack on top of the new base.
 
-## Before
+## The Asset
 
-Without Patchly, changing one field means your override file has to restate the whole asset, because Hytale does not deep-merge nested blocks. Stat definitions live as individual files in `Server/Entity/Stats/`, and the stock `Server/Entity/Stats/Mana.json` ships zeroed. Here is the entire file you would copy and maintain, with the parts you actually wanted marked:
+Stat definitions live as individual files in `Server/Entity/Stats/`. The stock `Server/Entity/Stats/Mana.json` ships zeroed:
 
 ```json
 {
@@ -98,4 +98,4 @@ The merged result:
 ## Notes
 
 - A mod that adds its own brand-new stat just ships a new file like `Server/Entity/Stats/Magic_Power.json` (as hexcode does for `Magic_Power`, `Volatility`, and `MagicCharges`). There is nothing to merge, so that is a normal asset, not a patch. Patchly is for MODIFYING a stat that another pack (or the base game) already defines, like retuning Mana's `Max` or regen here.
-- If several mods retune the same stat, use `$Priority` to decide whose values win. The highest priority applies last on a conflict. See [Removing-Values](Removing-Values) for deletes and the [syntax reference](../) for the full ruleset.
+- If several mods retune the same stat, use `$Priority` to decide whose values win. The highest priority applies last on a conflict. See [Removing-Values](Removing-Values) for deletes and the [syntax reference](Introduction) for the full ruleset.

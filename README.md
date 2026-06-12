@@ -50,6 +50,40 @@ Arrays REPLACE by default. Suffix the key with `+` to append instead:
 
 The parent's existing `Categories` entries stay; this entry gets added to the end.
 
+### Prepend on arrays
+
+Suffix the key with `-` to add your entries at the FRONT instead of the end:
+
+```json
+{
+  "Children-": [
+    { "Id": "Hexcode", "Name": "hexcode.itemcategory.hexcode.name" }
+  ]
+}
+```
+
+Your entries land before the parent's, in the order you wrote them. `-` is symmetric with `+`
+(creates the array if absent, supports `$Match`). It means prepend, NOT remove.
+
+### Fill only if a key is missing
+
+Suffix the key with `?` to write a value only when the target does not already define it. If the
+key is present, the base wins and your value is dropped:
+
+```json
+{
+  "Armor": {
+    "StatModifiers": {
+      "Mana?": [{ "Amount": 200, "CalculationType": "Additive" }]
+    }
+  }
+}
+```
+
+An item that already has `Mana` keeps it; one without gets `200`. Presence-based, so it works for
+any value type, and it is decided per key. This is the only way to let the base win - `$Priority`
+only orders patches against each other, never against the base.
+
 ### `$Requires` - only apply if specific packs are installed
 
 Single pack:
@@ -65,7 +99,7 @@ Multiple packs (all must be present):
 
 ```json
 {
-  "$Requires": ["Riprod:Hexcode", "Author:SomeOtherPack"],
+  "$Requires": ["Riprod:Hexcode", "Author:SomeOtherPack:^0.5.0"],
   "Armor": { ... }
 }
 ```
@@ -111,16 +145,23 @@ plugins {
     id("com.gradleup.shadow") version "8.3.5"
 }
 
+// a dedicated configuration so ONLY Patchly is shaded, not your compile deps
+val shaded by configurations.creating
+
 dependencies {
-    implementation(files("deps/Patchly-2.1.0.jar"))
+    // compile against the API, and mark it for shading into the final jar
+    shaded(files("deps/Patchly-3.1.1.jar"))
+    implementation(files("deps/Patchly-3.1.1.jar"))
 }
 
 tasks.shadowJar {
-    archiveClassifier.set("")
+    archiveClassifier.set("")        // shadow jar IS the published artifact
     mergeServiceFiles()
+    configurations = listOf(shaded)  // shade only what's in `shaded`
+    relocate("com.riprod.patchly", "com.riprod.<your pack id>.shaded.patchly")
 }
 
-tasks.jar { enabled = false }
+tasks.jar { enabled = false }        // disable the thin jar
 tasks.build { dependsOn(tasks.shadowJar) }
 ```
 ENSURE YOU SYNC GRADLE (Ctrl+Shift+O in Intellij IDEA)
@@ -135,33 +176,17 @@ public final class MyPlugin extends JavaPlugin {
 
     public MyPlugin(JavaPluginInit init) {
         super(init);
-        patchManager = new PatchManager(this.getManifest());
-    }
-
-    @Override public CompletableFuture<Void> preLoad() {
-        patchManager.preLoad();
-        return super.preLoad();
+        patchManager = new PatchManager(this);
     }
 
     @Override protected void setup() {
-        getEventRegistry().register(EventPriority.LAST, LoadAssetEvent.class,
-                e -> patchManager.rebuildAndApply("boot"));
-        getEventRegistry().register(AssetPackRegisterEvent.class, e -> {
-            if (PatchManager.isSyntheticOverridePack(e.getAssetPack().getName())) return;
-            patchManager.rebuildAndApply("packRegister:" + e.getAssetPack().getName());
-        });
-        getEventRegistry().register(AssetPackUnregisterEvent.class, e -> {
-            if (PatchManager.isSyntheticOverridePack(e.getAssetPack().getName())) return;
-            patchManager.rebuildAndApply("packUnregister:" + e.getAssetPack().getName());
-        });
+        patchManager.install();
     }
-
-    @Override protected void shutdown() { patchManager.shutdown(); }
 }
 ```
 > Note: When doing `./gradlew runServer` for testing, you cannot have Patchly.jar in the ./mods folder as well as your dependency. This is because the devserver will scan your deps and find your Patchly.jar's manifest.json and register it also as it's own pack. if it also exists in ./mods/ then it will register twice and die. You do not need Patchly.jar in your mods/ folder anyways, so just delete it lol 
 
-If both standalone `Patchly.jar` and a bundling mod are installed in the same JVM, the first to load claims ownership via the `patcher.owner` system property; the other defers and noops. No duplicate work, no conflicts.
+If both standalone `Patchly.jar` and a bundling mod are installed in the same JVM, each votes its version and the newest one becomes the single active owner; older copies defer and noop. The decision is final at boot. No duplicate work, no conflicts.
 
 ## Notes
 

@@ -1,5 +1,5 @@
 ---
-title: "Change a Crafting Recipe"
+title: "Recipe Change"
 order: 9
 published: true
 draft: false
@@ -12,18 +12,14 @@ inputs, and bench. You can tune one field, fully redesign the ingredient list, o
 bolt on a single extra ingredient. The trick is knowing when arrays replace and
 when they append.
 
-## Wanted
+## Goal
 
 Make the iron sword faster and cheaper to craft. First version: drop the time and
 strip the recipe down to a few iron bars. Second version: keep the stock recipe
 but add one more ingredient.
 
-## Before
-
-Without Patchly, changing one field means your override file has to restate the
-whole asset, because Hytale does not deep-merge nested blocks. Here is the entire
-`Server/Item/Items/Weapon/Sword/Weapon_Sword_Iron.json` you would copy and
-maintain, with the part you actually wanted marked:
+## The Asset
+`Server/Item/Items/Weapon/Sword/Weapon_Sword_Iron.json`
 
 ```json
 {
@@ -257,4 +253,4 @@ to the end. The recipe now has four input entries.
 - To make the item uncraftable instead, delete the whole `Recipe` with `null`.
   See [Removing-Values](Removing-Values).
 - If more than one mod edits the same recipe, `$Priority` decides last-wins. See
-  the [syntax reference](../) and the [Pack Developers guide](../Guides/Pack-Developers).
+  the [syntax reference](Introduction) and the [Pack Developers guide](Pack-Developers).

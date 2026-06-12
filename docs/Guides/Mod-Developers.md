@@ -1,5 +1,5 @@
 ---
-title: "For Mod Developers"
+title: "Mod Developers"
 order: 2
 published: true
 draft: false
@@ -13,8 +13,8 @@ This is for **Java plugins** that want their own patching built in, so your mod 
 ## Quickstart
 
 1. Put `Patchly-X.Y.Z.jar` in a `deps/` folder and shade it via a dedicated `shaded` configuration (so only Patchly is folded in).
-2. Construct a `PatchManager(getManifest())` in your plugin.
-3. Call `preLoad()`, register the three asset events in `setup()`, and call `shutdown()`.
+2. Construct a `PatchManager(this)` in your plugin.
+3. Call `install()` once in `setup()`.
 4. Ship your `.patch` files the same way a pack developer does.
 
 The two code blocks below are everything you need to copy. The explanations and caveats come after, skippable until you hit them.
@@ -34,8 +34,8 @@ val shaded by configurations.creating
 
 dependencies {
     // compile against the API, and mark it for shading into the final jar
-    shaded(files("deps/Patchly-2.1.0.jar"))
-    implementation(files("deps/Patchly-2.1.0.jar"))
+    shaded(files("deps/Patchly-3.1.1.jar"))
+    implementation(files("deps/Patchly-3.1.1.jar"))
 }
 
 tasks.shadowJar {
@@ -50,58 +50,29 @@ tasks.build { dependsOn(tasks.shadowJar) }
 
 ## 2. Drive `PatchManager` from your plugin
 
-`PatchManager` needs four touch points in your `JavaPlugin`: construct it, wipe-and-prep in `preLoad`, register three asset events in `setup`, and clean up in `shutdown`:
+`PatchManager` needs two touch points in your `JavaPlugin`: construct it with your plugin, then call `install()` once in `setup()`. Patchly wires its own asset events, shutdown hook, and override-directory wipe:
 
 ```java
 import com.riprod.patchly.PatchManager;
-import com.hypixel.hytale.event.EventPriority;
-import com.hypixel.hytale.server.core.asset.LoadAssetEvent;
-import com.hypixel.hytale.server.core.asset.AssetPackRegisterEvent;
-import com.hypixel.hytale.server.core.asset.AssetPackUnregisterEvent;
 
 public final class MyPlugin extends JavaPlugin {
     private final PatchManager patchManager;
 
     public MyPlugin(JavaPluginInit init) {
         super(init);
-        patchManager = new PatchManager(this.getManifest());
-    }
-
-    @Override
-    public CompletableFuture<Void> preLoad() {
-        patchManager.preLoad();              // wipe + recreate the override dir
-        return super.preLoad();
+        patchManager = new PatchManager(this);   // votes in the version election
     }
 
     @Override
     protected void setup() {
-        // initial merge once all base assets are loaded
-        getEventRegistry().register(EventPriority.LAST, LoadAssetEvent.class,
-                e -> patchManager.rebuildAndApply("boot:LoadAssetEvent"));
-
-        // re-merge when packs come and go at runtime
-        getEventRegistry().register(AssetPackRegisterEvent.class, e -> {
-            String name = e.getAssetPack().getName();
-            if (PatchManager.isSyntheticOverridePack(name)) return;   // ignore our own output
-            patchManager.rebuildAndApply("packRegister:" + name);
-        });
-        getEventRegistry().register(AssetPackUnregisterEvent.class, e -> {
-            String name = e.getAssetPack().getName();
-            if (PatchManager.isSyntheticOverridePack(name)) return;
-            patchManager.rebuildAndApply("packUnregister:" + name);
-        });
-    }
-
-    @Override
-    protected void shutdown() {
-        patchManager.shutdown();
+        patchManager.install();                  // claims activation and wires everything
     }
 }
 ```
 
 ## 3. Ship your `.patch` files
 
-Put `.patch` files in your pack tree exactly as a pack developer would: mirror the target asset's path with a `.patch` extension. See **[For Pack Developers](Pack-Developers)** and the [syntax reference](../) for the merge rules (`+` append, `null` removal, `$Requires`, `$Priority`).
+Put `.patch` files in your pack tree exactly as a pack developer would: mirror the target asset's path with a `.patch` extension. See **[For Pack Developers](Pack-Developers)** and the [syntax reference](Introduction) for the merge rules (`+` append, `-` prepend, `?` fill-if-absent, `null` removal, `$Requires`, `$Priority`).
 
 That is the working setup. The sections below explain why each piece is shaped this way.
 
@@ -113,7 +84,7 @@ Patchly is a single self-contained class set with zero runtime dependencies. Sha
 
 - Your users install **one** jar, not two.
 - Your patches apply even if no standalone `Patchly.jar` is present.
-- If a standalone jar or another bundling mod is also installed, Patchly's JVM-wide ownership election (via the `patcher.owner` system property) ensures exactly **one** instance does the work. The rest defer and noop. No duplicate merges, no conflicts.
+- If a standalone jar or another bundling mod is also installed, Patchly's JVM-wide version election ensures exactly **one** instance - the **newest version** - does the work. Older copies defer and noop. No duplicate merges, no conflicts. Keep your `deps/` jar current to stay the winner.
 
 ## Why the dedicated `shaded` configuration?
 
@@ -123,13 +94,16 @@ The `shaded` configuration is the important detail. Without `configurations = li
 
 | Call | When | Purpose |
 |---|---|---|
-| `new PatchManager(getManifest())` | construction | Claims JVM ownership (or defers if another instance already owns it). The manifest names the override pack. |
-| `preLoad()` | before assets load | Wipes the synthetic override directory for a clean slate. |
-| `rebuildAndApply(reason)` on `LoadAssetEvent` (priority `LAST`) | after all base assets load | The initial merge pass. `LAST` ensures every base asset is resolved first. |
-| `rebuildAndApply(reason)` on register/unregister | runtime pack changes | Re-merges so patches still apply to packs added or removed after boot. The `isSyntheticOverridePack` guard prevents an infinite loop when our own pack registers. |
-| `shutdown()` | plugin teardown | Clears the override directory. |
+| `new PatchManager(this)` | construction | Votes this copy's version into the JVM-wide election. The plugin's manifest names the override pack. |
+| `install()` | in `setup()` | If this copy won the election, wipes the override directory and registers everything below; otherwise returns and does nothing. |
 
-> The `isSyntheticOverridePack` guard on both runtime events is **not optional**. Registering the synthetic override pack fires `AssetPackRegisterEvent`, which would re-enter `rebuildAndApply` and loop. The guard short-circuits on our own pack's name.
+`install()` wires these internally, so you never write them yourself:
+
+| Wired by `install()` | When | Purpose |
+|---|---|---|
+| `rebuildAndApply` on `LoadAssetEvent` (priority `LAST`) | after all base assets load | The initial merge pass. `LAST` ensures every base asset is resolved first. |
+| `rebuildAndApply` on pack register/unregister | runtime pack changes | Re-merges so patches still apply to packs added or removed after boot. A built-in guard skips Patchly's own synthetic pack to avoid an infinite loop. |
+| directory wipe + `ShutdownEvent` cleanup | activation and teardown | Clean slate on win; clears the override directory and releases the election on shutdown. |
 
 ## Caveat: testing with `./gradlew runServer`
 
@@ -137,4 +111,6 @@ The `shaded` configuration is the important detail. Without `configurations = li
 
 ## Coexistence
 
-In production, your bundling mod, a standalone `Patchly.jar`, and other bundling mods can all be installed at once. The first to construct a `PatchManager` writes the `patcher.owner` system property and becomes the single active owner; every other instance logs that it is deferring and does nothing. Your mod works standalone, alongside the standalone jar, and alongside other Patchly-bundling mods. No coordination required.
+In production, your bundling mod, a standalone `Patchly.jar`, and other bundling mods can all be installed at once. Each copy votes its version at construction, and the **newest version** becomes the single active owner; every other instance logs that it is deferring and does nothing. The decision is made once at boot and is final. Your mod works standalone, alongside the standalone jar, and alongside other Patchly-bundling mods. No coordination required.
+
+> A Patchly **2.x** copy predates the version election and uses the old first-claim-wins logic. If a 2.x copy loads first, 3.x defers to it and the server behaves as it did on 2.x; if 3.x loads first, the 2.x copy defers. Either way one instance does the work. To guarantee newest-wins everywhere, keep every installed copy on 3.x.

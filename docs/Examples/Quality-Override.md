@@ -1,5 +1,5 @@
 ---
-title: "Change Block or Armor Quality"
+title: "Quality Override"
 order: 5
 published: true
 draft: false
@@ -10,19 +10,14 @@ draft: false
 Every item asset carries a top-level `"Quality"` string that sets its rarity tier
 and name color. Bumping it is the simplest kind of patch: a single scalar replace.
 
-## Wanted
+## Goal
 
 Promote the iron sword and the iron helmet from `Uncommon` to `Epic` so they show
 the Epic rarity color, without touching their model, recipe, stats, or interactions.
 
-## Before
+## The Asset
 
-Without Patchly, changing one field means your override file has to restate the
-whole asset, because Hytale does not deep-merge nested blocks. To flip a single
-`"Quality"` string from `Uncommon` to `Epic`, you would copy and maintain both of
-these entire files verbatim, just so the one marked line lands. Every other field
-below is dead weight you now own forever, and a copy that drifts the day the base
-game retunes the sword's damage or the helmet's recipe.
+Two files, the same one-line change.
 
 **`Server/Item/Items/Weapon/Sword/Weapon_Sword_Iron.json`**
 
@@ -340,5 +335,6 @@ Two patches, one per target. Each path mirrors the target with `.json` swapped f
 - Because this is a scalar replace, there is no `+` (array append) or `null`
   (delete) involved. See [Removing-Values](Removing-Values) for those.
 - If two packs both set `Quality` on the same item, the one with the higher
-  `$Priority` wins. See the [syntax reference](../) and the
-  [Pack Developers guide](../Guides/Pack-Developers).
+  `$Priority` wins. See the [syntax reference](Introduction) and the
+  [Pack Developers guide](Pack-Developers).
+- This is actually the reason why I added Patchly. I had to override the quality on ~20 armor pieces and gave up. So I made patchly instead

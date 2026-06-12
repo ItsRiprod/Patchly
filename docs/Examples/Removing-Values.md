@@ -1,5 +1,5 @@
 ---
-title: "Remove a Field or Recipe"
+title: "Removing Values"
 order: 7
 published: true
 draft: false
@@ -16,12 +16,8 @@ removing its recipe. The two cases below are the common ones.
 Drop the helmet's damage resistance entirely, while leaving everything else
 intact.
 
-### Before
-
-Without Patchly, dropping one nested block means your override file has to
-restate the whole asset, because Hytale does not deep-merge nested blocks. Here
-is the entire `Server/Item/Items/Armor/Iron/Armor_Iron_Head.json` you would copy
-and maintain, with the part you actually wanted gone marked:
+### The Asset
+`Server/Item/Items/Armor/Iron/Armor_Iron_Head.json`
 
 ```json
 {
@@ -200,9 +196,9 @@ be crafted.
   ```
 
   The written array fully replaces the original two-entry array. The `+` append
-  suffix is the opposite tool; see the [syntax reference](../).
+  suffix is the opposite tool; see the [syntax reference](Introduction).
 - Hytale's own assets use `"$Comment"`. Any top-level `$`-key is stripped before
   merge and never written, so it is not a way to remove real fields. Only `null`
   deletes.
 - If another pack also sets the same key, `$Priority` decides last-wins. See the
-  [syntax reference](../) and the [Pack Developers guide](../Guides/Pack-Developers).
+  [syntax reference](Introduction) and the [Pack Developers guide](Pack-Developers).
