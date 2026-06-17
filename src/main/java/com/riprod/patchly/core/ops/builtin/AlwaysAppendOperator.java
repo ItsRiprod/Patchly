@@ -4,11 +4,11 @@ import javax.annotation.Nonnull;
 
 import com.riprod.patchly.core.ops.builtin.interfaces.ArrayAddOperator;
 
-public final class AppendOperator extends ArrayAddOperator {
+public final class AlwaysAppendOperator extends ArrayAddOperator {
     @Nonnull
     @Override
     public String suffix() {
-        return "+";
+        return "++";
     }
 
     @Override
@@ -18,6 +18,6 @@ public final class AppendOperator extends ArrayAddOperator {
 
     @Override
     protected boolean dedupe() {
-        return true;
+        return false;
     }
 }

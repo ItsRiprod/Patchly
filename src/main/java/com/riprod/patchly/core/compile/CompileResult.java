@@ -9,8 +9,12 @@ import java.util.Map;
 
 public record CompileResult(@Nonnull Map<String, JsonObject> outputs,
         @Nonnull Map<Path, String> sourceToTarget,
-        @Nonnull List<MissingBase> missingBases) {
+        @Nonnull List<MissingBase> missingBases,
+        @Nonnull List<UnresolvedImport> unresolvedImports) {
 
     public record MissingBase(@Nonnull Path source, @Nonnull String target) {
+    }
+
+    public record UnresolvedImport(@Nonnull String fromTarget, @Nonnull String ref) {
     }
 }

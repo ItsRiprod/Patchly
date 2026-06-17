@@ -1,3 +1,8 @@
+/**
+ * Disclaimer of AI usage. I would be a fool to write all of these by hands.
+ * 
+ * Thank you claude for restoring a small amount of sanity before I broke
+ */
 package com.riprod.patchly;
 
 import com.google.gson.JsonArray;
@@ -95,6 +100,22 @@ class JsonDeepMergeTest {
         assertEquals("Staffs", tools.getAsJsonArray("SubCategories").get(0).getAsJsonObject().get("Id").getAsString());
         // sibling untouched
         assertFalse(arr(out, "Children").get(1).getAsJsonObject().has("SubCategories"));
+    }
+
+    @Test
+    void appendResolvesNestedOperatorsInsideAppendedObject() {
+        JsonObject out = merge(
+                "{ \"Children\": [ ] }",
+                "{ \"Children+\": [ { \"Id\": \"Hexcode\", \"Name\": \"server.ui.itemcategory.hexcode\", \"Icon\": \"Icons/ItemCategories/Hexcode.png\", \"SubCategories+\": [ { \"Id\": \"HexStaffs\", \"Name\": \"server.ui.itemcategory.subcategory.staffs.name\", \"Order\": 10, \"Description\": \"server.ui.itemcategory.subcategory.staffs.description\" }, { \"Id\": \"HexBooks\", \"Name\": \"server.ui.itemcategory.subcategory.books.name\", \"Order\": 10, \"Description\": \"server.ui.itemcategory.subcategory.books.description\" } ] } ] }");
+
+        JsonObject child = arr(out, "Children").get(0).getAsJsonObject();
+        assertEquals("Hexcode", child.get("Id").getAsString());
+        assertEquals("server.ui.itemcategory.hexcode", child.get("Name").getAsString());
+        assertEquals("Icons/ItemCategories/Hexcode.png", child.get("Icon").getAsString());
+        assertFalse(child.toString().contains("SubCategories+"));
+        assertEquals(2, child.getAsJsonArray("SubCategories").size());
+        assertEquals("HexStaffs", child.getAsJsonArray("SubCategories").get(0).getAsJsonObject().get("Id").getAsString());
+        assertEquals("HexBooks", child.getAsJsonArray("SubCategories").get(1).getAsJsonObject().get("Id").getAsString());
     }
 
     @Test
@@ -213,6 +234,16 @@ class JsonDeepMergeTest {
     }
 
     @Test
+    void prependAddsBeforeExistingNested() {
+        JsonObject out = merge("{ \"a\": [ { \"k\": [1, 2] }, 2] }", "{ \"a~\": [ { \"k-\": [ 0 ] } ] }");
+        assertEquals(2, arr(out, "a").size());
+        assertEquals(0, arr(out, "a").get(0).getAsJsonObject().getAsJsonArray("k").get(0).getAsInt());
+        assertEquals(1, arr(out, "a").get(0).getAsJsonObject().getAsJsonArray("k").get(1).getAsInt());
+        assertEquals(2, arr(out, "a").get(0).getAsJsonObject().getAsJsonArray("k").get(2).getAsInt());
+        assertEquals(2, arr(out, "a").get(1).getAsInt());
+    }
+
+    @Test
     void prependPreservesPatchOrder() {
         JsonObject out = merge("{ \"a\": [1] }", "{ \"a-\": [2, 3] }");
         assertEquals(2, arr(out, "a").get(0).getAsInt());
@@ -254,5 +285,64 @@ class JsonDeepMergeTest {
         assertEquals("new", arr(out, "Items").get(0).getAsJsonObject().get("Id").getAsString());
         assertEquals("x", arr(out, "Items").get(1).getAsJsonObject().get("Id").getAsString());
         assertFalse(arr(out, "Items").get(0).getAsJsonObject().has("$Match"));
+    }
+
+    // --- idempotent append/prepend (de-dup vs pre-existing base) ---
+
+    @Test
+    void plusSkipsElementAlreadyInBase() {
+        JsonObject out = merge("{ \"a\": [ { \"id\": \"p\" } ] }", "{ \"a+\": [ { \"id\": \"p\" } ] }");
+        assertEquals(1, arr(out, "a").size());
+    }
+
+    @Test
+    void plusSkipsOwnContributionLaunderedBackIntoBase() {
+        // the reported loop: base already holds p (re-read through a peer), a+ must not re-add it
+        JsonObject out = merge(
+                "{ \"a\": [ { \"id\": \"p\" }, { \"id\": \"o\" } ] }",
+                "{ \"a+\": [ { \"id\": \"p\" } ] }");
+        assertEquals(2, arr(out, "a").size());
+    }
+
+    @Test
+    void plusKeepsIdenticalSiblingsListedTogether() {
+        JsonObject out = merge("{ \"a\": [ 0 ] }", "{ \"a+\": [ 7, 7 ] }");
+        assertEquals(3, arr(out, "a").size());
+        assertEquals(7, arr(out, "a").get(1).getAsInt());
+        assertEquals(7, arr(out, "a").get(2).getAsInt());
+    }
+
+    @Test
+    void plusStillAppendsNewElement() {
+        JsonObject out = merge("{ \"a\": [1, 2] }", "{ \"a+\": [3] }");
+        assertEquals(3, arr(out, "a").size());
+        assertEquals(3, arr(out, "a").get(2).getAsInt());
+    }
+
+    @Test
+    void doublePlusAlwaysAppendsEvenWhenPresent() {
+        JsonObject out = merge("{ \"a\": [ { \"id\": \"p\" } ] }", "{ \"a++\": [ { \"id\": \"p\" } ] }");
+        assertEquals(2, arr(out, "a").size());
+    }
+
+    @Test
+    void minusSkipsElementAlreadyInBase() {
+        JsonObject out = merge("{ \"a\": [ { \"id\": \"p\" } ] }", "{ \"a-\": [ { \"id\": \"p\" } ] }");
+        assertEquals(1, arr(out, "a").size());
+    }
+
+    @Test
+    void minusKeepsIdenticalSiblingsAndPrependsInOrder() {
+        JsonObject out = merge("{ \"a\": [ 0 ] }", "{ \"a-\": [ 7, 7 ] }");
+        assertEquals(3, arr(out, "a").size());
+        assertEquals(7, arr(out, "a").get(0).getAsInt());
+        assertEquals(7, arr(out, "a").get(1).getAsInt());
+        assertEquals(0, arr(out, "a").get(2).getAsInt());
+    }
+
+    @Test
+    void doubleMinusAlwaysPrependsEvenWhenPresent() {
+        JsonObject out = merge("{ \"a\": [ { \"id\": \"p\" } ] }", "{ \"a--\": [ { \"id\": \"p\" } ] }");
+        assertEquals(2, arr(out, "a").size());
     }
 }

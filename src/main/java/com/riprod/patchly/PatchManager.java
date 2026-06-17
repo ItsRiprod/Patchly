@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
@@ -69,6 +70,12 @@ public final class PatchManager implements PatchChangeListener {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
     private final Map<Path, String> patchToTarget = new ConcurrentHashMap<>();
     private volatile boolean monitorInstalled = false;
+
+    // a second reactive patcher fighting over the same asset drives an unbounded rebuild loop;
+    // once a target keeps changing across reactive rebuilds we freeze it instead of crashing
+    private static final int LOOP_BREAKER_THRESHOLD = 10;
+    private final Map<String, Integer> consecutiveWrites = new HashMap<>();
+    private final Set<String> trippedTargets = ConcurrentHashMap.newKeySet();
 
     public PatchManager(@Nonnull JavaPlugin plugin) {
         this.plugin = plugin;
@@ -123,10 +130,26 @@ public final class PatchManager implements PatchChangeListener {
             return;
         }
 
+        boolean reactive = isReactiveReason(reason);
         List<Path> changed = new ArrayList<>();
         for (Map.Entry<String, JsonObject> entry : desired.entrySet()) {
-            Path written = store.writeIfChanged(entry.getKey(), entry.getValue());
-            if (written != null) changed.add(written);
+            String target = entry.getKey();
+            if (trippedTargets.contains(target)) continue;
+            if (reactive && consecutiveWrites.getOrDefault(target, 0) >= LOOP_BREAKER_THRESHOLD) {
+                trippedTargets.add(target);
+                LOGGER.at(Level.WARNING).log(
+                        "[patcher] loop breaker tripped for %s after %d consecutive rebuilds (%s); "
+                                + "freezing output - another tool is likely fighting Patchly over this asset",
+                        target, LOOP_BREAKER_THRESHOLD, reason);
+                continue;
+            }
+            Path written = store.writeIfChanged(target, entry.getValue());
+            if (written != null) {
+                if (reactive) consecutiveWrites.merge(target, 1, Integer::sum);
+                changed.add(written);
+            } else {
+                consecutiveWrites.remove(target);
+            }
         }
 
         if (changed.isEmpty()) {
@@ -273,6 +296,8 @@ public final class PatchManager implements PatchChangeListener {
     public void onPatchEvent(@Nonnull AssetPack pack, @Nonnull Path patchFile) {
         if (!election.isActive()) return;
         if (!isSourceFile(patchFile)) return;
+        consecutiveWrites.clear();
+        trippedTargets.clear();
         if (Files.exists(patchFile)) {
             rebuildAndApply("patchEdit:" + pack.getName() + ":" + patchFile.getFileName());
         } else {
@@ -288,6 +313,11 @@ public final class PatchManager implements PatchChangeListener {
     public void onBaseEvent(@Nonnull AssetPack pack, @Nonnull Path changedJson) {
         if (!election.isActive()) return;
         rebuildAndApply("baseEdit:" + pack.getName() + ":" + changedJson.getFileName());
+    }
+
+    private static boolean isReactiveReason(@Nonnull String reason) {
+        return reason.startsWith("baseEdit") || reason.startsWith("packRegister")
+                || reason.startsWith("packUnregister");
     }
 
     private static String loadSelfVersion() {

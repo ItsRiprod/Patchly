@@ -9,9 +9,9 @@ import com.riprod.patchly.core.compile.CompileResult;
 import com.riprod.patchly.core.compile.PatchCompiler;
 import com.riprod.patchly.core.compile.PatchSource;
 import com.riprod.patchly.core.directive.PatchContext;
-import com.riprod.patchly.source.BasePolicy;
 import com.riprod.patchly.source.SourceKind;
 import com.riprod.patchly.source.kinds.PatchKind;
+import com.riprod.patchly.source.kinds.PutKind;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.Nonnull;
@@ -26,19 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PatchCompilerTest {
     private static final MergeTable TABLE = JsonDeepMerge.activeTable();
     private static final SourceKind PATCH = new PatchKind();
-    private static final SourceKind PUT = new SourceKind() {
-        @Nonnull
-        @Override
-        public String extension() {
-            return ".put";
-        }
-
-        @Nonnull
-        @Override
-        public BasePolicy basePolicy() {
-            return BasePolicy.OPTIONAL;
-        }
-    };
+    private static final SourceKind PUT = new PutKind();
 
     private static final PatchContext ALL_PRESENT = new PatchContext() {
         @Override
@@ -159,6 +147,25 @@ class PatchCompilerTest {
         assertTrue(out.missingBases().isEmpty());
         JsonObject result = out.outputs().get("Foo.particlespawner");
         assertEquals("white", result.get("Color").getAsString());
+    }
+
+    @Test
+    void putKindGatedByRequiresNotCreatedWhenAbsent() {
+        CompileResult out = compile(
+                List.of(source("a.put", 0, "Foo.json", PUT, "{ \"$Requires\": \"Some:Mod\", \"Color\": \"white\" }")),
+                t -> null, NONE_PRESENT);
+        assertTrue(out.outputs().isEmpty());
+        assertTrue(out.missingBases().isEmpty());
+    }
+
+    @Test
+    void putKindMergesOntoExistingBaseAndFillRespectsBase() {
+        CompileResult out = compile(
+                List.of(source("a.put", 0, "Foo.json", PUT, "{ \"Color?\": \"white\", \"Tier\": 3 }")),
+                t -> parse("{ \"Color\": \"red\" }"), ALL_PRESENT);
+        JsonObject result = out.outputs().get("Foo.json");
+        assertEquals("red", result.get("Color").getAsString());
+        assertEquals(3, result.get("Tier").getAsInt());
     }
 
     @Test

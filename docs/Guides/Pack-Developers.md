@@ -101,6 +101,27 @@ A manifest dependency is all-or-nothing for the whole pack. To apply **one speci
 
 This patch is skipped (with a log line) unless `Riprod:Hexcode` is loaded. A single pack can carry optional compatibility patches for several mods, each activating only when its target is present. The pack itself still only hard-depends on `Riprod:Patchly`.
 
+## Adding a whole new asset with `.put`
+
+A `.patch` requires the target asset to already exist; if it does not, the patch is skipped. To **create** an asset, use a `.put` file instead. It carries the same syntax (operators, `$Requires`, `$Priority`, `$Match`) and resolves its target the same way (`.put` swapped for the asset extension, `Sword.put` and `Sword.json.put` both target `Sword.json`). The difference is the base:
+
+| | Target missing | Target already exists |
+|---|---|---|
+| `.patch` | skipped, logged | merges onto it |
+| `.put` | created from the file body | merges onto it |
+
+The headline case is an asset that only makes sense alongside another mod. Pair `.put` with `$Requires` and the asset is created only when that mod is present:
+
+```json
+{
+  "$Requires": "Riprod:Hexcode:^1.0.0",
+  "Id": "Sword",
+  "Damage": 12
+}
+```
+
+If the asset already exists, a `.put` merges onto it rather than skipping. To create-but-never-clobber, tag the fields you only want to seed with `?` (fill-if-absent), e.g. `"Damage?": 12` leaves an existing `Damage` untouched.
+
 ## Resolving conflicts with another pack
 
 If two packs patch the same field, both apply in load order and the last one wins. To guarantee yours wins regardless of load order, bump `$Priority`:

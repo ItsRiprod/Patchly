@@ -1,5 +1,7 @@
 package com.riprod.patchly.core;
 
+import com.riprod.patchly.core.ops.builtin.AlwaysAppendOperator;
+import com.riprod.patchly.core.ops.builtin.AlwaysPrependOperator;
 import com.riprod.patchly.core.ops.builtin.AppendOperator;
 import com.riprod.patchly.core.ops.builtin.FillOperator;
 import com.riprod.patchly.core.ops.builtin.PositionalOperator;
@@ -18,8 +20,10 @@ public final class OperatorRegistry {
         REGISTRY.register(new ReplaceOperator());
         REGISTRY.register(new PositionalOperator());
         REGISTRY.register(new AppendOperator());
+        REGISTRY.register(new AlwaysAppendOperator());
         REGISTRY.register(new FillOperator());
         REGISTRY.register(new PrependOperator());
+        REGISTRY.register(new AlwaysPrependOperator());
     }
 
     private OperatorRegistry() {}

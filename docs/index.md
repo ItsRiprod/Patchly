@@ -38,20 +38,26 @@ That's it. You've now patched some armor!
 
 # Patch syntax
 
-A `.patch` is plain JSON. Every key you write is merged onto the matching key in the resolved base asset. Here is every rule at a glance, then each one explained.
+A `.patch` is plain JSON. Every key you write is merged onto the matching key in the resolved base asset.
 
 | Feature | Example | What it does |
 |---|---|---|
 | Deep merge (objects) | `{ "A": { "B": 1 } }` | Only leaf `B` changes; sibling keys survive. |
 | Replace array (default) | `"Categories": [...]` | Discards the parent's array, uses yours. |
-| Append to array | `"Categories+": [...]` | Keeps the parent's entries, adds yours at the end. |
-| Prepend to array | `"Categories-": [...]` | Keeps the parent's entries, adds yours at the front. |
+| Append to array | `"Categories+": [...]` | Keeps the parent's entries, adds yours at the end, skipping any element already present. |
+| Prepend to array | `"Categories-": [...]` | Keeps the parent's entries, adds yours at the front, skipping any element already present. |
+| Append allowing duplicates | `"Categories++": [...]` | Like `+`, but never de-dups; appends even if an identical element already exists. |
+| Prepend allowing duplicates | `"Categories--": [...]` | Like `-`, but never de-dups; prepends even if an identical element already exists. |
 | Fill if absent | `"Mana?": [...]` | Writes the value only if the key is missing; otherwise the base wins. |
 | Extend by index | `"Recipes~": [ {}, {...} ]` | Merges into the base element at each position; `{}` changes nothing. |
 | Extend by field | `"Children+": [ { "$Match": "Id", "Id": "Tools", ... } ]` | Finds the element whose field matches and merges into it. |
 | Delete a key | `"DamageResistance": null` | Removes that key from the merged asset. |
 | Gate on packs | `"$Requires": "Group:Name"` or `"Group:Name:>=1.2.0"` or `[...]` | Patch applies only if all named packs are installed (and satisfy the optional version range); otherwise skipped with a log line. |
 | Win on conflicts | `"$Priority": 100` | Integer, default 0. Higher applies last and wins on conflicting fields. |
+
+`.put` will add the file if it does not exist
+
+`.patch` will only patch into the file if the base file exists
 
 An overview of their implementation is found [here](Examples)
 

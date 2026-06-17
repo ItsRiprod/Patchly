@@ -1,5 +1,6 @@
 package com.riprod.patchly.core.directive;
 
+import com.riprod.patchly.core.directive.builtins.AssetImportDirective;
 import com.riprod.patchly.core.directive.builtins.MatchDirective;
 import com.riprod.patchly.core.directive.builtins.PriorityDirective;
 import com.riprod.patchly.core.directive.builtins.RequiresDirective;
@@ -16,6 +17,7 @@ public final class DirectiveRegistry {
         REGISTRY.register(new MatchDirective());
         REGISTRY.register(new RequiresDirective());
         REGISTRY.register(new PriorityDirective());
+        REGISTRY.register(new AssetImportDirective());
     }
 
     private DirectiveRegistry() {}

@@ -26,7 +26,7 @@ Drop `Patchly-X.Y.Z.jar` into a `deps/` folder in your project, then wire up Sha
 ```kotlin
 plugins {
     id("hytale-mod") version "0.+"
-    id("com.gradleup.shadow") version "8.3.5"
+    id("com.gradleup.shadow") version "9.4.2"
 }
 
 // a dedicated configuration so ONLY Patchly is shaded, not your compile deps
@@ -72,7 +72,7 @@ public final class MyPlugin extends JavaPlugin {
 
 ## 3. Ship your `.patch` files
 
-Put `.patch` files in your pack tree exactly as a pack developer would: mirror the target asset's path with a `.patch` extension. See **[For Pack Developers](Pack-Developers)** and the [syntax reference](Introduction) for the merge rules (`+` append, `-` prepend, `?` fill-if-absent, `null` removal, `$Requires`, `$Priority`).
+Put `.patch` files in your pack tree exactly as a pack developer would: mirror the target asset's path with a `.patch` extension. Use a `.put` file instead to create an asset that does not already exist (handy for assets gated behind another mod with `$Requires`). See **[For Pack Developers](Pack-Developers)** and the [syntax reference](Introduction) for the merge rules (`+` append, `-` prepend, `?` fill-if-absent, `null` removal, `$Requires`, `$Priority`).
 
 That is the working setup. The sections below explain why each piece is shaped this way.
 
