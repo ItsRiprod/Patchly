@@ -52,36 +52,9 @@ A `.patch` is plain JSON. Every key you write is merged onto the matching key in
 | Extend by index | `"Recipes~": [ {}, {...} ]` | Merges into the base element at each position; `{}` changes nothing. |
 | Extend by field | `"Children+": [ { "$Match": "Id", "Id": "Tools", ... } ]` | Finds the element whose field matches and merges into it. |
 | Delete a key | `"DamageResistance": null` | Removes that key from the merged asset. |
-| Gate on packs | `"$Requires": "Group:Name"` or `"Group:Name:>=1.2.0"` or `[...]` | Patch applies only if all named packs are installed (and satisfy the optional version range); otherwise skipped with a log line. |
+| Gate on packs | `"$Requires": "Group:Name"` or `"Group:Name:>=1.2.0"` or `[...]` | Patch applies only if the gate passes; otherwise skipped with a log line. The list is an AND of clauses. Prefix a pack with `-` to require it ABSENT. Comma-join packs in one clause for OR (any present): `"A,B"`. So `["A", "-B", "C,D"]` means `A && !B && (C \|\| D)`. |
 | Win on conflicts | `"$Priority": 100` | Integer, default 0. Higher applies last and wins on conflicting fields. |
 | Inherit another asset | `"$Import": "Template_Base_Item"` or `[ ... ]` | Pulls in another same-type asset as a base layer beneath your keys. |
-
-## Inheriting from another asset with `$Import`
-
-`$Import` lets a patch inherit from another asset instead of copying its fields. The named asset is pulled in as a base layer; your own keys then override it.
-
-```json
-{
-  "$Import": "Template_Base_Item",
-  "Quality": "Legendary",
-  "ItemLevel": 100,
-  "PlayerAnimationsId?": "DynamicAnimation"
-}
-```
-
-If `Template_Base_Item` defines `Quality`, `ItemLevel`, `PlayerAnimationsId` and `Interactions`, the result keeps the original asset's own fields, layers the template on top, then applies your overrides. `Quality`/`ItemLevel` become your values; `PlayerAnimationsId?` is only filled if neither the original nor the template already set it.
-
-- **By id, type-scoped.** `"Template_Base_Item"` is resolved against assets of the **same type** as the file you are patching (an item only imports items, a block only blocks), so two unrelated assets sharing an id never collide. Use a value containing `/` to point at an exact asset path instead.
-- **Base + `.put`, never `.patch`.** An import sees the target asset's base plus any `.put` that creates or seeds it, so you can ship a template with a `.put` and `$Import` it everywhere. It never sees other packs' `.patch` output, which keeps imports cycle-free.
-- **Precedence**, highest first: your own non-`?` keys, then imports (a deeper `$Import` wins over a shallower one), then the original asset, then `?` fill fields.
-- **Arrays and chains.** `"$Import": [ "A", "B" ]` layers several assets in order (later wins). An imported template may itself `$Import` another. A missing import is skipped with a log line.
-- **Nesting.** A `$Import` inside a child object contributes only that asset's matching sub-tree (an `$Import` inside `Interactions` brings in only the imported asset's `Interactions`).
-
-`.put` will add the file if it does not exist
-
-`.patch` will only patch into the file if the base file exists
-
-An overview of their implementation is found [here](Examples)
 
 # Questions and Answers
 
