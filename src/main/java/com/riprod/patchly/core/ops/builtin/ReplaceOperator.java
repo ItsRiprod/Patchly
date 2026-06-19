@@ -30,11 +30,7 @@ public final class ReplaceOperator implements MergeOperator {
         }
         if (patchValue.isJsonObject()) {
             JsonObject patchObj = patchValue.getAsJsonObject();
-            if (hasReservedKey(patchObj)) {
-                if (ctx.isGatedOut(patchObj)) return;
-                patchObj = patchObj.deepCopy();
-                MetaKeys.strip(patchObj);
-            }
+            if (hasReservedKey(patchObj) && ctx.isGatedOut(patchObj)) return;
             JsonElement existing = target.get(baseKey);
             JsonObject child = (existing != null && existing.isJsonObject())
                     ? existing.getAsJsonObject()
@@ -42,7 +38,7 @@ public final class ReplaceOperator implements MergeOperator {
             if (existing == null || !existing.isJsonObject()) {
                 target.add(baseKey, child);
             }
-            ctx.mergeObject(child, patchObj);
+            ctx.mergeObject(child, patchObj, baseKey);
         } else if (patchValue.isJsonArray() && hasAnyMarker(patchValue.getAsJsonArray(), ctx)) {
             ctx.runArrayMerge(target, baseKey, patchValue.getAsJsonArray(), this);
         } else {

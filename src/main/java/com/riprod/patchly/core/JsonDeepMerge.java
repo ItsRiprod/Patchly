@@ -5,6 +5,7 @@ import com.riprod.patchly.core.directive.DirectiveRegistry;
 import com.riprod.patchly.core.directive.PatchContext;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 public final class JsonDeepMerge {
     private JsonDeepMerge() {}
@@ -22,8 +23,15 @@ public final class JsonDeepMerge {
     @Nonnull
     public static JsonObject merge(@Nonnull JsonObject base, @Nonnull JsonObject patch,
                                    @Nonnull MergeTable table, @Nonnull PatchContext ctx) {
+        return merge(base, patch, table, ctx, null, "");
+    }
+
+    @Nonnull
+    public static JsonObject merge(@Nonnull JsonObject base, @Nonnull JsonObject patch,
+                                   @Nonnull MergeTable table, @Nonnull PatchContext ctx,
+                                   @Nullable ImportResolver importResolver, @Nonnull String fromTarget) {
         JsonObject result = base.deepCopy();
-        new MergeEngine(table, ctx).mergeObject(result, patch);
+        new MergeEngine(table, ctx, importResolver, fromTarget).mergeObject(result, patch);
         return result;
     }
 

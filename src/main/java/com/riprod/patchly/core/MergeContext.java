@@ -6,9 +6,15 @@ import com.google.gson.JsonObject;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.List;
 
 public interface MergeContext {
     void mergeObject(@Nonnull JsonObject target, @Nonnull JsonObject patch);
+
+    void mergeObject(@Nonnull JsonObject target, @Nonnull JsonObject patch, @Nonnull String key);
+
+    @Nonnull
+    List<String> currentPath();
 
     void mergeAtIndex(@Nonnull JsonArray base, int index, @Nonnull JsonElement element);
 
@@ -21,4 +27,7 @@ public interface MergeContext {
     boolean hasLocatorMarker(@Nonnull JsonElement element);
 
     boolean isGatedOut(@Nonnull JsonObject patchObject);
+
+    @Nullable
+    JsonObject resolveImport(@Nonnull String ref);
 }

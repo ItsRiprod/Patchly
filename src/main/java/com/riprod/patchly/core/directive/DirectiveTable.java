@@ -12,13 +12,13 @@ import java.util.Map;
 public final class DirectiveTable {
     private final Map<String, ElementDirective> elementMarkers = new HashMap<>();
     private final List<RootDirective> rootDirectives = new ArrayList<>();
-    private final Map<String, ImportDirective> importMarkers = new HashMap<>();
+    private final List<ObjectDirective> objectDirectives = new ArrayList<>();
 
     public DirectiveTable(@Nonnull Collection<Directive> all) {
         for (Directive d : all) {
             if (d instanceof ElementDirective e) elementMarkers.put(e.markerKey(), e);
             if (d instanceof RootDirective r) rootDirectives.add(r);
-            if (d instanceof ImportDirective i) importMarkers.put(i.markerKey(), i);
+            if (d instanceof ObjectDirective o) objectDirectives.add(o);
         }
     }
 
@@ -32,13 +32,8 @@ public final class DirectiveTable {
         return Collections.unmodifiableList(rootDirectives);
     }
 
-    @Nullable
-    public ImportDirective importDirective(@Nonnull String marker) {
-        return importMarkers.get(marker);
-    }
-
     @Nonnull
-    public Collection<ImportDirective> importDirectives() {
-        return Collections.unmodifiableCollection(importMarkers.values());
+    public List<ObjectDirective> objectDirectives() {
+        return Collections.unmodifiableList(objectDirectives);
     }
 }

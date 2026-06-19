@@ -184,12 +184,17 @@ public final class PatchManager implements PatchChangeListener {
     private CompileResult compose() {
         SourceKindTable kinds = SourceKindRegistry.table();
         List<PatchSource> sources = discoverSources(kinds);
+        AssetTypeIndex assetIndex = new AssetTypeIndex(AssetModule.get().getAssetPacks(), sources);
         CompileResult result = new PatchCompiler().compile(
-                sources, this::resolveBaseJson, buildPatchContext(), JsonDeepMerge.activeTable());
+                sources, this::resolveBaseJson, buildPatchContext(), JsonDeepMerge.activeTable(), assetIndex);
 
         for (CompileResult.MissingBase mb : result.missingBases()) {
             LOGGER.at(Level.WARNING).log(
                     "[patcher] no base asset for patch %s (looking for %s)", mb.source(), mb.target());
+        }
+        for (CompileResult.UnresolvedImport ui : result.unresolvedImports()) {
+            LOGGER.at(Level.WARNING).log(
+                    "[patcher] unresolved $Import '%s' from %s", ui.ref(), ui.fromTarget());
         }
 
         patchToTarget.clear();

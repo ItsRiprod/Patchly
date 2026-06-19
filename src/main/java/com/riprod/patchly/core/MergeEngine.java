@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.riprod.patchly.core.directive.ElementDirective;
+import com.riprod.patchly.core.directive.ObjectDirective;
 import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.core.directive.RootDirective;
 
@@ -16,16 +17,31 @@ import java.util.List;
 public final class MergeEngine implements MergeContext {
     private final MergeTable table;
     private final PatchContext patchContext;
+    private final ImportResolver importResolver;
+    private final String fromTarget;
+    private final List<String> path = new ArrayList<>();
 
     public MergeEngine(@Nonnull MergeTable table, @Nonnull PatchContext patchContext) {
+        this(table, patchContext, null, "");
+    }
+
+    public MergeEngine(@Nonnull MergeTable table, @Nonnull PatchContext patchContext,
+            @Nullable ImportResolver importResolver, @Nonnull String fromTarget) {
         this.table = table;
         this.patchContext = patchContext;
+        this.importResolver = importResolver;
+        this.fromTarget = fromTarget;
     }
 
     @Override
     public void mergeObject(@Nonnull JsonObject target, @Nonnull JsonObject patch) {
+        for (ObjectDirective d : table.directives().objectDirectives()) {
+            JsonElement marker = patch.get(d.markerKey());
+            if (marker != null) d.apply(target, marker, this);
+        }
         List<Resolved> entries = new ArrayList<>(patch.size());
         for (String key : patch.keySet()) {
+            if (key.startsWith(MetaKeys.PREFIX)) continue;
             entries.add(new Resolved(key, table.operatorFor(key)));
         }
         entries.sort(Comparator.comparingInt(e -> e.operator.phase()));
@@ -33,6 +49,28 @@ public final class MergeEngine implements MergeContext {
             String baseKey = table.baseKey(e.key, e.operator);
             e.operator.apply(target, baseKey, patch.get(e.key), this);
         }
+    }
+
+    @Override
+    public void mergeObject(@Nonnull JsonObject target, @Nonnull JsonObject patch, @Nonnull String key) {
+        path.add(key);
+        try {
+            mergeObject(target, patch);
+        } finally {
+            path.remove(path.size() - 1);
+        }
+    }
+
+    @Nonnull
+    @Override
+    public List<String> currentPath() {
+        return List.copyOf(path);
+    }
+
+    @Nullable
+    @Override
+    public JsonObject resolveImport(@Nonnull String ref) {
+        return importResolver == null ? null : importResolver.resolve(fromTarget, ref);
     }
 
     private record Resolved(String key, MergeOperator operator) {}

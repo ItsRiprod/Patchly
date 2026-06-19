@@ -1,13 +1,15 @@
 package com.riprod.patchly.core.directive.builtins;
 
 import com.google.gson.JsonElement;
-import com.riprod.patchly.core.directive.ImportDirective;
+import com.google.gson.JsonObject;
+import com.riprod.patchly.core.MergeContext;
+import com.riprod.patchly.core.directive.ObjectDirective;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
+import javax.annotation.Nullable;
 import java.util.List;
 
-public final class AssetImportDirective implements ImportDirective {
+public final class AssetImportDirective implements ObjectDirective {
     private static final String MARKER = "$Import";
 
     @Nonnull
@@ -16,18 +18,33 @@ public final class AssetImportDirective implements ImportDirective {
         return MARKER;
     }
 
-    @Nonnull
     @Override
-    public List<String> refs(@Nonnull JsonElement markerValue) {
-        List<String> refs = new ArrayList<>();
+    public void apply(@Nonnull JsonObject target, @Nonnull JsonElement markerValue, @Nonnull MergeContext ctx) {
+        List<String> path = ctx.currentPath();
         if (markerValue.isJsonArray()) {
-            // later entries win, so they layer on top of earlier ones during expansion
-            for (JsonElement e : markerValue.getAsJsonArray()) {
-                if (e.isJsonPrimitive() && e.getAsJsonPrimitive().isString()) refs.add(e.getAsString());
-            }
-        } else if (markerValue.isJsonPrimitive() && markerValue.getAsJsonPrimitive().isString()) {
-            refs.add(markerValue.getAsString());
+            for (JsonElement e : markerValue.getAsJsonArray()) applyRef(target, e, path, ctx);
+        } else {
+            applyRef(target, markerValue, path, ctx);
         }
-        return refs;
+    }
+
+    private void applyRef(@Nonnull JsonObject target, @Nonnull JsonElement ref,
+            @Nonnull List<String> path, @Nonnull MergeContext ctx) {
+        if (!ref.isJsonPrimitive() || !ref.getAsJsonPrimitive().isString()) return;
+        JsonObject asset = ctx.resolveImport(ref.getAsString());
+        if (asset == null) return;
+        JsonObject scoped = scopeTo(asset, path);
+        if (scoped != null) ctx.mergeObject(target, scoped);
+    }
+
+    @Nullable
+    private static JsonObject scopeTo(@Nonnull JsonObject asset, @Nonnull List<String> path) {
+        JsonObject cur = asset;
+        for (String key : path) {
+            JsonElement next = cur.get(key);
+            if (next == null || !next.isJsonObject()) return null;
+            cur = next.getAsJsonObject();
+        }
+        return cur;
     }
 }

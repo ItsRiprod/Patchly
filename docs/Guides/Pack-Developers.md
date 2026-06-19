@@ -103,7 +103,7 @@ This patch is skipped (with a log line) unless `Riprod:Hexcode` is loaded. A sin
 
 ## Adding a whole new asset with `.put`
 
-A `.patch` requires the target asset to already exist; if it does not, the patch is skipped. To **create** an asset, use a `.put` file instead. It carries the same syntax (operators, `$Requires`, `$Priority`, `$Match`) and resolves its target the same way (`.put` swapped for the asset extension, `Sword.put` and `Sword.json.put` both target `Sword.json`). The difference is the base:
+A `.patch` requires the target asset to already exist; if it does not, the patch is skipped. To **create** an asset, use a `.put` file instead. It carries the same syntax (operators, `$Requires`, `$Priority`, `$Match`, `$Import`) and resolves its target the same way (`.put` swapped for the asset extension, `Sword.put` and `Sword.json.put` both target `Sword.json`). The difference is the base:
 
 | | Target missing | Target already exists |
 |---|---|---|
@@ -121,6 +121,20 @@ The headline case is an asset that only makes sense alongside another mod. Pair 
 ```
 
 If the asset already exists, a `.put` merges onto it rather than skipping. To create-but-never-clobber, tag the fields you only want to seed with `?` (fill-if-absent), e.g. `"Damage?": 12` leaves an existing `Damage` untouched.
+
+## Reusing a template with `$Import`
+
+When several assets share a chunk of configuration, define it once and `$Import` it instead of copy-pasting. The imported asset is layered in as a base; your own keys override it:
+
+```json
+{
+  "$Import": "Template_Base_Item",
+  "Quality": "Legendary",
+  "ItemLevel": 100
+}
+```
+
+The reference is an asset **id**, resolved only against assets of the **same type** as the file you are patching, so an item never imports a block that happens to share the id. Use a value containing `/` to point at an exact asset path. An import sees the target's base plus any `.put` that creates it (never other packs' `.patch`), so a template you ship as a `.put` can be `$Import`ed everywhere. Use `"$Import": [ "A", "B" ]` to layer several (later wins); a missing import is skipped with a log line. For the full precedence rules see the [syntax reference](Introduction).
 
 ## Resolving conflicts with another pack
 
