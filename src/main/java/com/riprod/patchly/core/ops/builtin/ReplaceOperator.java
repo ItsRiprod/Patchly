@@ -39,8 +39,10 @@ public final class ReplaceOperator implements MergeOperator {
                 target.add(baseKey, child);
             }
             ctx.mergeObject(child, patchObj, baseKey);
-        } else if (patchValue.isJsonArray() && hasAnyMarker(patchValue.getAsJsonArray(), ctx)) {
-            ctx.runArrayMerge(target, baseKey, patchValue.getAsJsonArray(), this);
+        } else if (patchValue.isJsonArray()) {
+            JsonArray patchArray = patchValue.getAsJsonArray();
+            if (!hasAnyMarker(patchArray, ctx)) target.add(baseKey, new JsonArray());
+            ctx.runArrayMerge(target, baseKey, patchArray, this);
         } else {
             target.add(baseKey, patchValue.deepCopy());
         }

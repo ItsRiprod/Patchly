@@ -169,6 +169,27 @@ class PatchCompilerTest {
     }
 
     @Test
+    void bareArrayElementMarkersStrippedFromOutput() {
+        CompileResult out = compile(
+                List.of(source("a.put", 0, "Foo.json", PUT,
+                        "{ \"Stats\": [ { \"$Priority\": 5, \"$Requires\": \"Some:Mod\", \"Amount\": 1 } ] }")),
+                t -> null, ALL_PRESENT);
+        JsonObject r = out.outputs().get("Foo.json");
+        assertFalse(r.toString().contains("$Requires"));
+        assertFalse(r.toString().contains("$Priority"));
+        assertEquals(1, r.getAsJsonArray("Stats").get(0).getAsJsonObject().get("Amount").getAsInt());
+    }
+
+    @Test
+    void bareArrayElementGatedOutWhenPackAbsent() {
+        CompileResult out = compile(
+                List.of(source("a.put", 0, "Foo.json", PUT,
+                        "{ \"Stats\": [ { \"$Requires\": \"Some:Mod\", \"Amount\": 1 } ] }")),
+                t -> null, NONE_PRESENT);
+        assertEquals(0, out.outputs().get("Foo.json").getAsJsonArray("Stats").size());
+    }
+
+    @Test
     void accumulatesMultipleSourcesIntoOneTarget() {
         CompileResult out = compile(List.of(
                 source("a.patch", 0, "Foo.json", PATCH, "{ \"A\": 1 }"),

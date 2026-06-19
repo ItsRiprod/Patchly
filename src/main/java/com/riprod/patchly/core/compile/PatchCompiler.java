@@ -5,7 +5,6 @@ import com.google.gson.JsonObject;
 import com.riprod.patchly.core.JsonDeepMerge;
 import com.riprod.patchly.core.MergeTable;
 import com.riprod.patchly.core.MetaKeys;
-import com.riprod.patchly.core.directive.ObjectDirective;
 import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.core.directive.RootDirective;
 import com.riprod.patchly.source.BasePolicy;
@@ -19,7 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class PatchCompiler {
     @Nonnull
@@ -70,8 +68,7 @@ public final class PatchCompiler {
 
         List<CompileResult.UnresolvedImport> unresolved = new ArrayList<>();
         ImportResolverImpl imports = new ImportResolverImpl(assetIndex, baseResolver, putsByTarget, table, ctx, unresolved);
-        Set<String> objectMarkers = table.directives().objectDirectives().stream()
-                .map(ObjectDirective::markerKey).collect(Collectors.toSet());
+        Set<String> markers = table.directives().markerKeys();
 
         Map<String, JsonObject> outputs = new LinkedHashMap<>();
         Map<java.nio.file.Path, String> sourceToTarget = new LinkedHashMap<>();
@@ -96,7 +93,7 @@ public final class PatchCompiler {
 
             JsonObject merged = JsonDeepMerge.merge(accumulator, s.patchJson(), table, ctx, imports, target);
             JsonDeepMerge.stripMergeKey(merged);
-            MetaKeys.stripMarkersDeep(merged, objectMarkers);
+            MetaKeys.stripMarkersDeep(merged, markers);
             outputs.put(target, merged);
             sourceToTarget.put(s.id(), target);
         }

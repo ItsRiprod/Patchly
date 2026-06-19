@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class DirectiveTable {
     private final Map<String, ElementDirective> elementMarkers = new HashMap<>();
@@ -35,5 +37,13 @@ public final class DirectiveTable {
     @Nonnull
     public List<ObjectDirective> objectDirectives() {
         return Collections.unmodifiableList(objectDirectives);
+    }
+
+    @Nonnull
+    public Set<String> markerKeys() {
+        Set<String> keys = new HashSet<>(elementMarkers.keySet());
+        for (RootDirective r : rootDirectives) keys.add(r.markerKey());
+        for (ObjectDirective o : objectDirectives) keys.add(o.markerKey());
+        return keys;
     }
 }
