@@ -105,6 +105,7 @@ public final class PatchManager implements PatchChangeListener {
         plugin.getEventRegistry().register(AssetPackUnregisterEvent.class, e -> {
             String name = e.getAssetPack().getName();
             if (isSyntheticOverridePack(name)) return;
+            packSourceCache.remove(name);
             rebuildAndApply("packUnregister:" + name);
         });
         plugin.getEventRegistry().register(ShutdownEvent.class, e -> shutdown());
@@ -206,34 +207,57 @@ public final class PatchManager implements PatchChangeListener {
 
     @Nonnull
     private List<PatchSource> discoverSources(@Nonnull SourceKindTable kinds) {
-        List<PatchSource> out = new ArrayList<>();
         List<AssetPack> packs = AssetModule.get().getAssetPacks();
+        List<PatchSource> out = new ArrayList<>();
+        int walked = 0;
+        int cached = 0;
         for (int i = 0; i < packs.size(); i++) {
             AssetPack pack = packs.get(i);
             if (isSyntheticOverridePack(pack.getName())) continue;
-            final int packIndex = i;
-            final Path root = pack.getRoot();
-            try {
-                Files.walkFileTree(root, EnumSet.of(FileVisitOption.FOLLOW_LINKS),
-                        Integer.MAX_VALUE, new SimpleFileVisitor<>() {
-                            @Override
-                            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                                Path name = file.getFileName();
-                                SourceKind kind = name == null ? null : kinds.kindFor(name.toString());
-                                if (kind == null) return FileVisitResult.CONTINUE;
-                                JsonObject json = readJson(file);
-                                if (json == null) return FileVisitResult.CONTINUE;
-                                String relSource = PathUtil.normalizeRelative(root, file);
-                                String stem = PathUtil.stripSuffix(relSource, kind.extension());
-                                if (stem == null) return FileVisitResult.CONTINUE;
-                                String target = PathUtil.recoverTargetExtension(stem);
-                                out.add(new PatchSource(file, packIndex, target, kind, json));
-                                return FileVisitResult.CONTINUE;
-                            }
-                        });
-            } catch (IOException e) {
-                LOGGER.at(Level.WARNING).withCause(e).log("[patcher] walk failed for pack %s", pack.getName());
+            List<PatchSource> perPack = packSourceCache.get(pack.getName());
+            if (perPack == null) {
+                perPack = walkPack(pack, i, kinds);
+                packSourceCache.put(pack.getName(), perPack);
+                walked++;
+            } else {
+                cached++;
             }
+            for (PatchSource s : perPack) {
+                // loadIndex is a position in getAssetPacks() that shifts on register/unregister;
+                // re-stamp against the pack current index, copy the record only when it moved
+                out.add(s.loadIndex() == i ? s
+                        : new PatchSource(s.id(), i, s.targetRelative(), s.kind(), s.patchJson()));
+            }
+        }
+        LOGGER.at(Level.FINE).log("[patcher] discovered %d source(s) (%d pack(s) walked, %d cached)",
+                out.size(), walked, cached);
+        return out;
+    }
+
+    @Nonnull
+    private List<PatchSource> walkPack(@Nonnull AssetPack pack, int packIndex, @Nonnull SourceKindTable kinds) {
+        List<PatchSource> out = new ArrayList<>();
+        final Path root = pack.getRoot();
+        try {
+            Files.walkFileTree(root, EnumSet.of(FileVisitOption.FOLLOW_LINKS),
+                    Integer.MAX_VALUE, new SimpleFileVisitor<>() {
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                            Path name = file.getFileName();
+                            SourceKind kind = name == null ? null : kinds.kindFor(name.toString());
+                            if (kind == null) return FileVisitResult.CONTINUE;
+                            JsonObject json = readJson(file);
+                            if (json == null) return FileVisitResult.CONTINUE;
+                            String relSource = PathUtil.normalizeRelative(root, file);
+                            String stem = PathUtil.stripSuffix(relSource, kind.extension());
+                            if (stem == null) return FileVisitResult.CONTINUE;
+                            String target = PathUtil.recoverTargetExtension(stem);
+                            out.add(new PatchSource(file, packIndex, target, kind, json));
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
+        } catch (IOException e) {
+            LOGGER.at(Level.WARNING).withCause(e).log("[patcher] walk failed for pack %s", pack.getName());
         }
         return out;
     }
@@ -315,17 +339,29 @@ public final class PatchManager implements PatchChangeListener {
     public void onPatchEvent(@Nonnull AssetPack pack, @Nonnull Path patchFile) {
         if (!election.isActive()) return;
         if (!isSourceFile(patchFile)) return;
+        packSourceCache.remove(pack.getName());
         consecutiveWrites.clear();
         trippedTargets.clear();
         if (Files.exists(patchFile)) {
             rebuildAndApply("patchEdit:" + pack.getName() + ":" + patchFile.getFileName());
         } else {
-            String target = patchToTarget.remove(patchFile);
-            if (target != null) {
-                store.deleteOverride(target);
+            String target = patchToTarget.get(patchFile);
+            Set<String> produced =
+                    rebuildAndApply("patchDelete:" + pack.getName() + ":" + patchFile.getFileName());
+            if (target != null && !produced.contains(target)) {
+                restoreOrDrop(target);
             }
-            rebuildAndApply("patchDelete:" + pack.getName() + ":" + patchFile.getFileName());
         }
+    }
+
+    private void restoreOrDrop(@Nonnull String target) {
+        JsonObject base = resolveBaseJson(target);
+        if (base == null) {
+            store.deleteOverride(target);
+            return;
+        }
+        Path restored = store.writeIfChanged(target, base);
+        if (restored != null) reloader.reload(List.of(restored));
     }
 
     @Override
