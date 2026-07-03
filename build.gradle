@@ -1,0 +1,92 @@
+plugins {
+    id 'java'
+    id 'com.azuredoom.hytale-tools' version '1.0.38'
+}
+
+repositories {
+    mavenCentral()
+    gradlePluginPortal()
+    maven { url "https://www.cursemaven.com" }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of((project.java_version as String).toInteger())
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+
+base {
+    archivesName = 'Patchly'
+}
+
+configurations {
+    testCompileOnly.extendsFrom(compileOnly)
+    testRuntimeOnly.extendsFrom(compileOnly)
+}
+
+dependencies {
+    compileOnly libs.jetbrains.annotations
+    compileOnly libs.jspecify
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.3'
+    // jmh benchmarks live in the test sourceSet so they inherit the compileOnly
+    // (server + gson) classpath at both compile and runtime; see the `jmh` task.
+    testImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    testAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
+}
+
+hytaleTools {
+    javaVersion = project.java_version as Integer
+    hytaleVersion = project.hytale_version.toString()
+    manifestServerVersion = project.manifestServerVersion.toString()
+    manifestGroup = project.manifest_group.toString()
+    modId = project.mod_id.toString()
+    modDescription = project.mod_description.toString()
+    modUrl = project.mod_url.toString()
+    mainClass = project.main_class.toString()
+    modCredits = project.mod_credits.toString()
+    manifestDependencies = project.manifest_dependencies.toString()
+    manifestOptionalDependencies = project.manifest_opt_dependencies.toString()
+    curseforgeId = project.curseforgeID.toString()
+    disabledByDefault = project.disabled_by_default.toString().toBoolean()
+    includesPack = project.includes_pack.toString().toBoolean()
+    patchline = project.patchline.toString()
+
+    debugEnabled = true
+    debugSuspend = false
+
+    requireDcevm = true
+} 
+
+processResources {
+    def versionTokens = [plugin_version: project.version.toString()]
+    inputs.properties(versionTokens)
+    filesMatching('com/riprod/patchly/patchly-version.properties') {
+        expand(versionTokens)
+    }
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+// runs the pure-core JMH benchmarks on the test runtime classpath.
+//   ./gradlew jmh                 (all benchmarks)
+//   ./gradlew jmh -Pbench=Merge   (regex filter on benchmark class/method)
+tasks.register('jmh', JavaExec) {
+    group = 'verification'
+    description = 'Run pure-core JMH benchmarks (MergeEngine/Compiler/DeepNest)'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'org.openjdk.jmh.Main'
+    def filter = project.findProperty('bench') ?: '.*Bench.*'
+    args(filter as String)
+    // extra JMH flags, e.g. -PjmhArgs='-f 1 -wi 1 -i 1 -rf json -rff out.json'
+    def extra = project.findProperty('jmhArgs')
+    if (extra) {
+        args((extra as String).split('\\s+'))
+    }
+}

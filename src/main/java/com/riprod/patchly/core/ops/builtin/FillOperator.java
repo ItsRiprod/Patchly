@@ -23,7 +23,6 @@ public final class FillOperator implements MergeOperator {
     @Override
     public void apply(@Nonnull JsonObject target, @Nonnull String baseKey,
                       @Nonnull JsonElement patchValue, @Nonnull MergeContext ctx) {
-        // base wins when the key already exists, regardless of value type
         if (target.has(baseKey)) return;
         if (patchValue.isJsonNull()) return;
         target.add(baseKey, patchValue.deepCopy());
@@ -32,7 +31,6 @@ public final class FillOperator implements MergeOperator {
     @Override
     public void onLocatorMiss(@Nonnull JsonArray base, int index,
                               @Nonnull JsonObject cleanPayload, @Nonnull MergeContext ctx) {
-        // fill writes the whole value or nothing; it never merges array elements in place
     }
 
     @Override

@@ -51,8 +51,7 @@ public final class ReplaceOperator implements MergeOperator {
     @Override
     public void onLocatorMiss(@Nonnull JsonArray base, int index,
                               @Nonnull JsonObject cleanPayload, @Nonnull MergeContext ctx) {
-        // a bare array switches to in-place merge only to address its $Match elements; an unmatched
-        // element has no slot to land in, so it is dropped
+
     }
 
     @Override

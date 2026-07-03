@@ -31,8 +31,6 @@ public abstract class ArrayAddOperator implements MergeOperator {
                 ? existing.getAsJsonArray()
                 : new JsonArray();
 
-        // dedupe compares against the array as it existed before this operator ran, so identical
-        // entries listed together in one patch are all kept while an entry already present is skipped
         int boundary = base.size();
         JsonArray additions = new JsonArray();
         for (int i = 0; i < patchArray.size(); i++) {
@@ -76,13 +74,11 @@ public abstract class ArrayAddOperator implements MergeOperator {
     @Override
     public void onLocatorMiss(@Nonnull JsonArray base, int index,
                               @Nonnull JsonObject cleanPayload, @Nonnull MergeContext ctx) {
-        // apply owns the loop; the per-element array callbacks are never routed here
     }
 
     @Override
     public void onPlainElement(@Nonnull JsonArray base, int index,
                                @Nonnull JsonElement element, @Nonnull MergeContext ctx) {
-        // apply owns the loop; the per-element array callbacks are never routed here
     }
 
     protected static boolean containsEqual(@Nonnull JsonArray base, int boundary,

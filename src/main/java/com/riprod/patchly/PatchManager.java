@@ -17,6 +17,7 @@ import com.hypixel.hytale.server.core.asset.AssetPackUnregisterEvent;
 import com.hypixel.hytale.server.core.asset.LoadAssetEvent;
 import com.hypixel.hytale.server.core.event.events.ShutdownEvent;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
+import com.hypixel.hytale.server.core.plugin.PluginBase;
 import com.hypixel.hytale.server.core.plugin.PluginManager;
 import com.riprod.patchly.core.JsonDeepMerge;
 import com.riprod.patchly.core.compile.CompileResult;
@@ -69,10 +70,10 @@ public final class PatchManager implements PatchChangeListener {
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
     private final Map<Path, String> patchToTarget = new ConcurrentHashMap<>();
+    private final Map<String, List<PatchSource>> packSourceCache = new ConcurrentHashMap<>();
     private volatile boolean monitorInstalled = false;
+    private AssetTypeIndex assetLocator;
 
-    // a second reactive patcher fighting over the same asset drives an unbounded rebuild loop;
-    // once a target keeps changing across reactive rebuilds we freeze it instead of crashing
     private static final int LOOP_BREAKER_THRESHOLD = 10;
     private final Map<String, Integer> consecutiveWrites = new HashMap<>();
     private final Set<String> trippedTargets = ConcurrentHashMap.newKeySet();
@@ -121,13 +122,13 @@ public final class PatchManager implements PatchChangeListener {
         return OverridePackRegistrar.isSynthetic(name);
     }
 
-    public synchronized void rebuildAndApply(@Nonnull String reason) {
-        if (!election.isActive()) return;
+    public synchronized Set<String> rebuildAndApply(@Nonnull String reason) {
+        if (!election.isActive()) return Set.of();
 
         Map<String, JsonObject> desired = compose().outputs();
         if (desired.isEmpty()) {
             LOGGER.at(Level.INFO).log("[patcher] no patches resolved (%s)", reason);
-            return;
+            return Set.of();
         }
 
         boolean reactive = isReactiveReason(reason);
@@ -155,7 +156,7 @@ public final class PatchManager implements PatchChangeListener {
         if (changed.isEmpty()) {
             LOGGER.at(Level.FINE).log(
                     "[patcher] noop %s - all %d output(s) byte-identical to disk", reason, desired.size());
-            return;
+            return desired.keySet();
         }
 
         boolean firstRegister = !registrar.isRegistered();
@@ -172,6 +173,7 @@ public final class PatchManager implements PatchChangeListener {
         LOGGER.at(Level.INFO).log(
                 "[patcher] %d patch output(s); %d file(s) changed and %s (%s)",
                 desired.size(), changed.size(), firstRegister ? "registered" : "reloaded", reason);
+        return desired.keySet();
     }
 
     public void shutdown() {
@@ -184,9 +186,9 @@ public final class PatchManager implements PatchChangeListener {
     private CompileResult compose() {
         SourceKindTable kinds = SourceKindRegistry.table();
         List<PatchSource> sources = discoverSources(kinds);
-        AssetTypeIndex assetIndex = new AssetTypeIndex(AssetModule.get().getAssetPacks(), sources);
+        this.assetLocator = new AssetTypeIndex(sources);
         CompileResult result = new PatchCompiler().compile(
-                sources, this::resolveBaseJson, buildPatchContext(), JsonDeepMerge.activeTable(), assetIndex);
+                sources, this::resolveBaseJson, buildPatchContext(), JsonDeepMerge.activeTable(), assetLocator);
 
         for (CompileResult.MissingBase mb : result.missingBases()) {
             LOGGER.at(Level.WARNING).log(
@@ -238,34 +240,46 @@ public final class PatchManager implements PatchChangeListener {
 
     @Nullable
     private JsonObject resolveBaseJson(@Nonnull String relativeTarget) {
-        Path winning = null;
-        for (AssetPack p : AssetModule.get().getAssetPacks()) {
-            if (isSyntheticOverridePack(p.getName())) continue;
-            Path candidate = p.getRoot().resolve(relativeTarget);
-            if (Files.isRegularFile(candidate)) winning = candidate;
-        }
-        return winning == null ? null : readJson(winning);
+        AssetTypeIndex locator = this.assetLocator;
+        Path base = locator == null ? null : locator.upstreamBasePath(relativeTarget);
+        return base == null ? null : readJson(base);
     }
 
     @Nonnull
     private PatchContext buildPatchContext() {
-        Map<String, AssetPack> present = new HashMap<>();
-        for (AssetPack p : AssetModule.get().getAssetPacks()) present.put(p.getName(), p);
         return new PatchContext() {
+            private Map<String, Semver> present;
+
+            private Map<String, Semver> present() {
+                if (present == null) {
+                    Map<String, Semver> versions = new HashMap<>();
+                    for (AssetPack p : AssetModule.get().getAssetPacks()) {
+                        versions.put(p.getName(), p.getManifest().getVersion());
+                    }
+                    PluginManager pluginManager = PluginManager.get();
+                    if (pluginManager != null) {
+                        for (PluginBase plugin : pluginManager.getPlugins()) {
+                            versions.putIfAbsent(plugin.getIdentifier().toString(),
+                                    plugin.getManifest().getVersion());
+                        }
+                    }
+                    present = versions;
+                }
+                return present;
+            }
+
             @Override
             public boolean packPresent(@Nonnull String packName) {
-                return present.containsKey(packName);
+                return present().containsKey(packName);
             }
 
             @Override
             public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
-                AssetPack p = present.get(packName);
-                if (p == null) return false;
-                Semver version = p.getManifest().getVersion();
+                Semver version = present().get(packName);
+                if (version == null) return false;
                 try {
                     return version.satisfies(SemverRange.fromString(range));
                 } catch (RuntimeException e) {
-                    // malformed range degrades to presence-only, matching legacy behavior
                     return true;
                 }
             }
