@@ -2,17 +2,19 @@
 
 Patch JSON assets without rewriting it from the ground up. Zero dependancies.
 
+Please read though the [official Patchly docs](https://wiki.hytalemodding.dev/mod/patchly) for comprehensive guides and examples!
+
 *Why Patchly Exists*
 Hytale's native `Parent: super` only inherits at the outer asset level - most nested codec fields (e.g. `Item.armor.StatModifiers`, `DamageResistance`) use `.append(...)` not `.appendInherited(...)`, so a normal JSON override replaces the whole sub-object and silently wipes everything it didn't restate.
 
 *What patchly does*
-Patchly reads the resolved base asset and deep-merges your `.patch` onto it, so you only write the diff.
+Patchly allows you to "patch" your existing JSON files, when external mods you flag are present in the player's game, by reading the resolved base asset and deep-merging your `.patch` onto it, so you only write the difference.
 
 Works on every registered `AssetPack` - folder, `.zip`, and `.jar` packs all. JSON-only modders can drop `Patchly.jar` into `mods/`; Java modders can bundle Patchly into their own jar via Gradle Shadow. Patchly coordinates with other instances of patchly to ensure only one patchly is running at a time. This means that your mod can work by itself, with other patchly mods, with the patchly.jar, and more. 
 
 ## How patches work
 
-Place a `.patch` file at the same path as the asset you're patching, swapping `.json` for `.patch`. To patch `Armor_Iron_Head.json` in another pack, ship `Server/Item/Items/Armor/Iron/Armor_Iron_Head.patch` in your pack.
+Create a new `.patch` file in the same directory as the asset you created, and start writing the fields you wish to add/change for that asset. Alternatively, clone any file from another mod and swap `.json` for `.patch` to start making a version of your original asset that fully integrates with the other mod. To patch `Armor_Iron_Head.json` in another pack, ship `Server/Item/Items/Armor/Iron/Armor_Iron_Head.patch` in your pack.
 
 Patchly walks every pack, resolves the latest version of each target, merges your `.patch` onto it, and writes the result into a synthetic override pack that takes precedence.
 
@@ -162,6 +164,7 @@ tasks.shadowJar {
 tasks.jar { enabled = false }        // disable the thin jar
 tasks.build { dependsOn(tasks.shadowJar) }
 ```
+ENSURE YOU SYNC GRADLE (Ctrl+Shift+O in Intellij IDEA)
 
 Then in your `JavaPlugin`:
 
