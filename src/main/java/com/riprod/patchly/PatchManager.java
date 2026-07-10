@@ -25,7 +25,6 @@ import com.riprod.patchly.core.compile.PatchCompiler;
 import com.riprod.patchly.core.compile.PatchSource;
 import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.election.OwnershipElection;
-import com.riprod.patchly.reload.AssetReloader;
 import com.riprod.patchly.reload.MonitorInstaller;
 import com.riprod.patchly.source.SourceKind;
 import com.riprod.patchly.source.SourceKindRegistry;
@@ -65,7 +64,6 @@ public final class PatchManager implements PatchChangeListener {
     private final OwnershipElection election;
     private final OverrideStore store;
     private final OverridePackRegistrar registrar;
-    private final AssetReloader reloader;
     private final MonitorInstaller monitorInstaller;
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
@@ -87,8 +85,7 @@ public final class PatchManager implements PatchChangeListener {
 
         this.election = new OwnershipElection(owner.toString(), PATCHER_VERSION);
         this.store = new OverrideStore(overrideDir);
-        this.registrar = new OverridePackRegistrar(owner, packName, overrideDir);
-        this.reloader = new AssetReloader(overrideDir, packName);
+        this.registrar = new OverridePackRegistrar(owner, packName, overrideDir, store);
         this.monitorInstaller = new MonitorInstaller(this);
     }
 
@@ -165,15 +162,13 @@ public final class PatchManager implements PatchChangeListener {
             registrar.register();
         }
 
-        reloader.reload(changed);
-
         if (!monitorInstalled) {
             monitorInstaller.install();
             monitorInstalled = true;
         }
         LOGGER.at(Level.INFO).log(
                 "[patcher] %d patch output(s); %d file(s) changed and %s (%s)",
-                desired.size(), changed.size(), firstRegister ? "registered" : "reloaded", reason);
+                desired.size(), changed.size(), firstRegister ? "registered" : "written", reason);
         return desired.keySet();
     }
 
@@ -360,8 +355,7 @@ public final class PatchManager implements PatchChangeListener {
             store.deleteOverride(target);
             return;
         }
-        Path restored = store.writeIfChanged(target, base);
-        if (restored != null) reloader.reload(List.of(restored));
+        store.writeIfChanged(target, base);
     }
 
     @Override

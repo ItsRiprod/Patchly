@@ -36,6 +36,20 @@ public final class OverrideStore {
         }
     }
 
+    public void writeManifest(@Nonnull String group, @Nonnull String name) {
+        JsonObject manifest = new JsonObject();
+        manifest.addProperty("Group", group);
+        manifest.addProperty("Name", name);
+        manifest.addProperty("Version", "1.0.0");
+        manifest.addProperty("IncludesAssetPack", true);
+        try {
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve("manifest.json"), gson.toJson(manifest));
+        } catch (IOException e) {
+            LOGGER.at(Level.WARNING).withCause(e).log("[patcher] failed to write override manifest");
+        }
+    }
+
     public void clear(boolean includingRoot) {
         if (!Files.isDirectory(dir)) return;
         try {

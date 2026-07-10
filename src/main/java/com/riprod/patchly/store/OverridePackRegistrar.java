@@ -17,11 +17,14 @@ public final class OverridePackRegistrar {
     private final PluginIdentifier owner;
     private final String packName;
     private final Path dir;
+    private final OverrideStore store;
 
-    public OverridePackRegistrar(@Nonnull PluginIdentifier owner, @Nonnull String packName, @Nonnull Path dir) {
+    public OverridePackRegistrar(@Nonnull PluginIdentifier owner, @Nonnull String packName,
+            @Nonnull Path dir, @Nonnull OverrideStore store) {
         this.owner = owner;
         this.packName = packName;
         this.dir = dir;
+        this.store = store;
     }
 
     @Nonnull
@@ -46,6 +49,7 @@ public final class OverridePackRegistrar {
                 new ArrayList<>(),
                 false
         );
+        store.writeManifest(owner.getGroup(), owner.getName() + OVERRIDE_PACK_SUFFIX);
         AssetModule.get().registerPack(packName, dir, manifest, PackSource.CLASSPATH);
     }
 
