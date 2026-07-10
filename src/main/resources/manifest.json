@@ -1,7 +1,7 @@
 {
     "Group": "Riprod",
     "Name": "Patchly",
-    "Version": "3.4.0",
+    "Version": "3.4.1",
     "Description": "Cross-pack JSON patch system for Hytale mods",
     "Authors": [
         {

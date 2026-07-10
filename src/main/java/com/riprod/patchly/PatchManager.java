@@ -37,7 +37,6 @@ import com.riprod.patchly.watch.PatchChangeListener;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.StringReader;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
@@ -50,7 +49,6 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -58,7 +56,7 @@ import java.util.logging.Level;
 public final class PatchManager implements PatchChangeListener {
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
 
-    public static final String PATCHER_VERSION = loadSelfVersion();
+    public static final String PATCHER_VERSION = BuildInfo.VERSION;
 
     private final JavaPlugin plugin;
     private final OwnershipElection election;
@@ -85,7 +83,8 @@ public final class PatchManager implements PatchChangeListener {
 
         this.election = new OwnershipElection(owner.toString(), PATCHER_VERSION);
         this.store = new OverrideStore(overrideDir);
-        this.registrar = new OverridePackRegistrar(owner, packName, overrideDir, store);
+        this.registrar = new OverridePackRegistrar(owner, packName, overrideDir, store,
+                plugin.getManifest().getServerVersion());
         this.monitorInstaller = new MonitorInstaller(this);
     }
 
@@ -369,16 +368,4 @@ public final class PatchManager implements PatchChangeListener {
                 || reason.startsWith("packUnregister");
     }
 
-    private static String loadSelfVersion() {
-        try (InputStream in = PatchManager.class.getResourceAsStream("patchly-version.properties")) {
-            if (in != null) {
-                Properties props = new Properties();
-                props.load(in);
-                String v = props.getProperty("version");
-                if (v != null && !v.isBlank()) return v.trim();
-            }
-        } catch (IOException ignored) {
-        }
-        return "0.0.0";
-    }
 }

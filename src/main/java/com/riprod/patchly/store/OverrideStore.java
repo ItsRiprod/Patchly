@@ -36,11 +36,14 @@ public final class OverrideStore {
         }
     }
 
-    public void writeManifest(@Nonnull String group, @Nonnull String name) {
+    public void writeManifest(@Nonnull String group, @Nonnull String name, @Nullable String serverVersion) {
         JsonObject manifest = new JsonObject();
         manifest.addProperty("Group", group);
         manifest.addProperty("Name", name);
         manifest.addProperty("Version", "1.0.0");
+        if (serverVersion != null && !serverVersion.isBlank()) {
+            manifest.addProperty("ServerVersion", serverVersion);
+        }
         manifest.addProperty("IncludesAssetPack", true);
         try {
             Files.createDirectories(dir);

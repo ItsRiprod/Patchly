@@ -4,9 +4,11 @@ import com.hypixel.hytale.assetstore.AssetPack.PackSource;
 import com.hypixel.hytale.common.plugin.PluginIdentifier;
 import com.hypixel.hytale.common.plugin.PluginManifest;
 import com.hypixel.hytale.common.semver.Semver;
+import com.hypixel.hytale.common.semver.SemverRange;
 import com.hypixel.hytale.server.core.asset.AssetModule;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,13 +20,15 @@ public final class OverridePackRegistrar {
     private final String packName;
     private final Path dir;
     private final OverrideStore store;
+    private final SemverRange serverVersion;
 
     public OverridePackRegistrar(@Nonnull PluginIdentifier owner, @Nonnull String packName,
-            @Nonnull Path dir, @Nonnull OverrideStore store) {
+            @Nonnull Path dir, @Nonnull OverrideStore store, @Nullable SemverRange serverVersion) {
         this.owner = owner;
         this.packName = packName;
         this.dir = dir;
         this.store = store;
+        this.serverVersion = serverVersion;
     }
 
     @Nonnull
@@ -44,12 +48,13 @@ public final class OverridePackRegistrar {
                 new ArrayList<>(),
                 "",
                 null,
-                null,
+                serverVersion,
                 new HashMap<>(), new HashMap<>(), new HashMap<>(),
                 new ArrayList<>(),
                 false
         );
-        store.writeManifest(owner.getGroup(), owner.getName() + OVERRIDE_PACK_SUFFIX);
+        store.writeManifest(owner.getGroup(), owner.getName() + OVERRIDE_PACK_SUFFIX,
+                serverVersion == null ? null : serverVersion.toString());
         AssetModule.get().registerPack(packName, dir, manifest, PackSource.CLASSPATH);
     }
 

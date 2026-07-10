@@ -61,13 +61,27 @@ hytaleTools {
     requireDcevm = true
 } 
 
-processResources {
-    def versionTokens = [plugin_version: project.version.toString()]
-    inputs.properties(versionTokens)
-    filesMatching('com/riprod/patchly/patchly-version.properties') {
-        expand(versionTokens)
+def generateVersionSource = tasks.register('generateVersionSource') {
+    def outputDir = layout.buildDirectory.dir('generated/sources/patchlyVersion')
+    def pluginVersion = project.version.toString()
+    inputs.property('pluginVersion', pluginVersion)
+    outputs.dir(outputDir)
+    doLast {
+        def pkg = outputDir.get().dir('com/riprod/patchly').asFile
+        pkg.mkdirs()
+        new File(pkg, 'BuildInfo.java').text = """package com.riprod.patchly;
+
+public final class BuildInfo {
+    public static final String VERSION = "${pluginVersion}";
+
+    private BuildInfo() {
     }
 }
+"""
+    }
+}
+
+sourceSets.main.java.srcDir(generateVersionSource)
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
