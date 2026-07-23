@@ -24,3 +24,4 @@ gradle.properties
 /run
 /bin
 TODO.md
+key.properties
