@@ -4,6 +4,7 @@ import com.riprod.patchly.registry.KeyValidator;
 import com.riprod.patchly.registry.Registry;
 import com.riprod.patchly.source.kinds.PatchKind;
 import com.riprod.patchly.source.kinds.PutKind;
+import com.riprod.patchly.source.kinds.VarsKind;
 
 import javax.annotation.Nonnull;
 
@@ -14,6 +15,7 @@ public final class SourceKindRegistry {
     static {
         REGISTRY.register(new PatchKind());
         REGISTRY.register(new PutKind());
+        REGISTRY.register(new VarsKind());
     }
 
     private SourceKindRegistry() {}

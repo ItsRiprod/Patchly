@@ -48,6 +48,37 @@ class JsonDeepMergeTest {
     }
 
     @Test
+    void plusAppendsNestedArrayElement() {
+        JsonObject out = merge(
+                "{ \"Groups\": [ [1, 2] ] }",
+                "{ \"Groups+\": [ [3, 4] ] }");
+        assertEquals(2, arr(out, "Groups").size());
+        assertEquals(1, arr(out, "Groups").get(0).getAsJsonArray().get(0).getAsInt());
+        assertEquals(4, arr(out, "Groups").get(1).getAsJsonArray().get(1).getAsInt());
+    }
+
+    @Test
+    void nestedArrayOperationElement() {
+        JsonObject out = merge(
+                "{ \"Groups\": [ { \"Items\": [1, 2] } ] }",
+                "{ \"Groups+\": [ { \"Items+\": [3, 4] } ] }");
+        assertEquals(2, arr(out, "Groups").size());
+        assertEquals(1, arr(out, "Groups").get(0).getAsJsonObject().getAsJsonArray("Items").get(0).getAsInt());
+        assertEquals(4, arr(out, "Groups").get(1).getAsJsonObject().getAsJsonArray("Items").get(1).getAsInt());
+        assertFalse(arr(out, "Groups").get(1).getAsJsonObject().getAsJsonArray("Items").toString().contains("+"));
+    }
+
+    @Test
+    void nestedArrayOptionalOperationElement() {
+        JsonObject out = merge(
+                "{  }",
+                "{ \"Groups?\": [ { \"Items?\": [3, 4] } ] }");
+        assertEquals(1, arr(out, "Groups").size());
+        assertFalse(arr(out, "Groups").get(0).getAsJsonObject().getAsJsonArray("Items").toString().contains("?"));
+        assertEquals(3, arr(out, "Groups").get(0).getAsJsonObject().getAsJsonArray("Items").get(0).getAsInt());
+    }
+
+    @Test
     void nullDeletesKey() {
         JsonObject out = merge("{ \"a\": 1, \"b\": 2 }", "{ \"b\": null }");
         assertTrue(out.has("a"));

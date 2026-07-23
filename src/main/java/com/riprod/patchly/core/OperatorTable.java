@@ -3,6 +3,7 @@ package com.riprod.patchly.core;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -40,5 +41,13 @@ public final class OperatorTable {
     @Nonnull
     public String baseKey(@Nonnull String key, @Nonnull MergeOperator operator) {
         return key.substring(0, key.length() - operator.suffix().length());
+    }
+
+    @Nonnull
+    public OperatorTable with(@Nonnull MergeOperator... extra) {
+        List<MergeOperator> all = new ArrayList<>(bySuffixDesc);
+        all.add(defaultOperator);
+        Collections.addAll(all, extra);
+        return new OperatorTable(all);
     }
 }

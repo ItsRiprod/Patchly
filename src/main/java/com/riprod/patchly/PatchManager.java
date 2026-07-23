@@ -193,6 +193,10 @@ public final class PatchManager implements PatchChangeListener {
             LOGGER.at(Level.WARNING).log(
                     "[patcher] unresolved $Import '%s' from %s", ui.ref(), ui.fromTarget());
         }
+        for (CompileResult.UnresolvedExpression ue : result.unresolvedExpressions()) {
+            LOGGER.at(Level.WARNING).log(
+                    "[patcher] unresolved expression at %s (\"%s\"): %s", ue.where(), ue.expression(), ue.reason());
+        }
 
         patchToTarget.clear();
         patchToTarget.putAll(result.sourceToTarget());

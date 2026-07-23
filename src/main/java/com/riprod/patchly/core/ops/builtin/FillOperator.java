@@ -9,6 +9,8 @@ import com.riprod.patchly.core.MergeOperator;
 import javax.annotation.Nonnull;
 
 public final class FillOperator implements MergeOperator {
+    private final ReplaceOperator resolve = new ReplaceOperator();
+
     @Nonnull
     @Override
     public String suffix() {
@@ -25,7 +27,7 @@ public final class FillOperator implements MergeOperator {
                       @Nonnull JsonElement patchValue, @Nonnull MergeContext ctx) {
         if (target.has(baseKey)) return;
         if (patchValue.isJsonNull()) return;
-        target.add(baseKey, patchValue.deepCopy());
+        resolve.apply(target, baseKey, patchValue, ctx);
     }
 
     @Override

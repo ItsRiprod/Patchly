@@ -26,6 +26,8 @@ Looking for one specific operator or meta-key? Jump straight to the page that de
 | field replace | overwrite a single scalar value | [Quality-Override](Quality-Override) |
 | forward reference | name an id from a later-loading pack | [Load-Order](Load-Order) |
 | slot retarget | point one interaction slot at another handler | [Replace-Interaction](Replace-Interaction) |
+| `.vars` variables | define numbers once, reference them from patches | [Variables](Variables) |
+| `#` expression | compute a value from variables and math | [Variables](Variables) |
 
 ## By scenario
 
@@ -44,6 +46,7 @@ Looking for one specific operator or meta-key? Jump straight to the page that de
 | 11 | [Override one element inside an array](Match-Array-Element) | `~` element merge + `$Match` |
 | 12 | [Add a stat only if the item doesn't already have it](Fill-If-Absent) | `?` fill-if-absent |
 | 13 | [Put your entries at the front of an array](Prepend-Array) | `-` prepend |
+| 14 | [Balance a whole armor set from one number](Variables) | `.vars` + `#` expression |
 
 ## What Patchly can and cannot patch (for now)
 

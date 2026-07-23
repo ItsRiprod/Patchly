@@ -116,6 +116,30 @@ If two packs patch the same field, both apply in load order and the last one win
 
 Higher `$Priority` applies last and wins on conflicting fields. Lower-priority `+` appends from other packs still stack onto fields you did not touch.
 
+## Deriving values with `.vars` and `#`
+
+When many assets share numbers, define them once in a `.vars` file and compute per-asset values with a `#` key instead of hardcoding. A `.vars` holds plain numbers and its filename is the scope:
+
+`Armor.vars`
+```json
+{ "Spread_Head": 0.15, "Mult_Mana": 1.0 }
+```
+
+`Adamantite.vars`
+```json
+{ "Mana": 80 }
+```
+
+Suffix a numeric key with `#` to make its value an expression, and reference a variable as `$Scope.Name`:
+
+```json
+{ "Armor": { "StatModifiers": { "Mana?": [
+  { "Amount#": "round($Adamantite.Mana * $Armor.Spread_Head * $Armor.Mult_Mana)", "CalculationType": "Additive" }
+] } } }
+```
+
+Patchly evaluates it and writes `12` to `Amount`. Expressions support `+ - * / ( )` and `round floor ceil abs int min max clamp`. `Globals.vars` is referenced bare (`$Name`); every other file is a named scope (`$Filename.Name`). A named `.vars` value may reference globals but not another scope, so do cross-scope math in the patch. A bad expression is skipped with a log line, never fatal, and `.vars` files are never emitted as assets. See [Variables](Variables) for the full walkthrough.
+
 # Array Operations
 
 When working with arrays, there are 4 primary things you can do.
