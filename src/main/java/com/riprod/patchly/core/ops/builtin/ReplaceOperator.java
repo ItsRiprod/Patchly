@@ -57,7 +57,13 @@ public final class ReplaceOperator implements MergeOperator {
     @Override
     public void onPlainElement(@Nonnull JsonArray base, int index,
                                @Nonnull JsonElement element, @Nonnull MergeContext ctx) {
-        base.add(element.deepCopy());
+        if (element.isJsonObject()) {
+            JsonObject resolved = new JsonObject();
+            ctx.mergeObject(resolved, element.getAsJsonObject());
+            base.add(resolved);
+        } else {
+            base.add(element.deepCopy());
+        }
     }
 
     private static boolean hasAnyMarker(@Nonnull JsonArray arr, @Nonnull MergeContext ctx) {

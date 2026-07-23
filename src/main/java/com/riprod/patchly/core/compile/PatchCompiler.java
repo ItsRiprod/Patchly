@@ -7,6 +7,9 @@ import com.riprod.patchly.core.MergeTable;
 import com.riprod.patchly.core.MetaKeys;
 import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.core.directive.RootDirective;
+import com.riprod.patchly.core.vars.ComputeOperator;
+import com.riprod.patchly.core.vars.VarEnv;
+import com.riprod.patchly.core.vars.VarEnvBuilder;
 import com.riprod.patchly.source.BasePolicy;
 
 import javax.annotation.Nonnull;
@@ -58,6 +61,14 @@ public final class PatchCompiler {
         ordered.sort(Comparator.comparingInt((Ordered o) -> o.priority)
                 .thenComparingInt(o -> o.source.loadIndex()));
 
+        List<CompileResult.UnresolvedExpression> expressions = new ArrayList<>();
+        List<PatchSource> envSources = new ArrayList<>();
+        for (Ordered o : ordered) {
+            if (o.source.kind().basePolicy() == BasePolicy.ENVIRONMENT) envSources.add(o.source);
+        }
+        VarEnv env = VarEnvBuilder.build(envSources, expressions);
+        MergeTable effective = table.with(new ComputeOperator(env, expressions));
+
         Map<String, List<JsonObject>> putsByTarget = new HashMap<>();
         for (Ordered o : ordered) {
             if (o.source.kind().basePolicy() == BasePolicy.OPTIONAL) {
@@ -67,8 +78,8 @@ public final class PatchCompiler {
         }
 
         List<CompileResult.UnresolvedImport> unresolved = new ArrayList<>();
-        ImportResolverImpl imports = new ImportResolverImpl(assetIndex, baseResolver, putsByTarget, table, ctx, unresolved);
-        Set<String> markers = table.directives().markerKeys();
+        ImportResolverImpl imports = new ImportResolverImpl(assetIndex, baseResolver, putsByTarget, effective, ctx, unresolved);
+        Set<String> markers = effective.directives().markerKeys();
 
         Map<String, JsonObject> outputs = new LinkedHashMap<>();
         Map<java.nio.file.Path, String> sourceToTarget = new LinkedHashMap<>();
@@ -76,6 +87,7 @@ public final class PatchCompiler {
 
         for (Ordered o : ordered) {
             PatchSource s = o.source;
+            if (s.kind().basePolicy() == BasePolicy.ENVIRONMENT) continue;
             String target = s.targetRelative();
 
             JsonObject accumulator = outputs.get(target);
@@ -91,14 +103,14 @@ public final class PatchCompiler {
                 accumulator = base;
             }
 
-            JsonObject merged = JsonDeepMerge.merge(accumulator, s.patchJson(), table, ctx, imports, target);
+            JsonObject merged = JsonDeepMerge.merge(accumulator, s.patchJson(), effective, ctx, imports, target);
             JsonDeepMerge.stripMergeKey(merged);
             MetaKeys.stripMarkersDeep(merged, markers);
             outputs.put(target, merged);
             sourceToTarget.put(s.id(), target);
         }
 
-        return new CompileResult(outputs, sourceToTarget, missing, unresolved);
+        return new CompileResult(outputs, sourceToTarget, missing, unresolved, expressions);
     }
 
     private record Ordered(PatchSource source, int priority) {

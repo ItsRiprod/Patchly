@@ -20,7 +20,7 @@ gradle-app.setting
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
 /lib
-gradle.properties
 /run
 /bin
 TODO.md
+key.properties

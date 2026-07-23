@@ -16,7 +16,7 @@ class EnginePurityTest {
     @Test
     void purePackagesNeverImportHytale() throws IOException {
         List<Path> roots = List.of(
-                Path.of("src/main/java/com/riprod/patchly/engine"),
+                Path.of("src/main/java/com/riprod/patchly/core"),
                 Path.of("src/main/java/com/riprod/patchly/registry"),
                 Path.of("src/main/java/com/riprod/patchly/source"));
 

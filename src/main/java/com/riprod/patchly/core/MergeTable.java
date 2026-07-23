@@ -21,4 +21,9 @@ public record MergeTable(@Nonnull OperatorTable operators, @Nonnull DirectiveTab
     public ElementDirective elementDirective(@Nonnull String marker) {
         return directives.elementDirective(marker);
     }
+
+    @Nonnull
+    public MergeTable with(@Nonnull MergeOperator... extra) {
+        return new MergeTable(operators.with(extra), directives);
+    }
 }
