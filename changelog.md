@@ -1,3 +1,10 @@
+# v3.4.3
+Added a fallback for exact-path lookup.
+
+This allows patching assets that do not exist in the asset registry (i.e. NPC roles or some weird biomes)
+
+You can place a `.patch` file at the exact location of the json file you wish to patch, and it will fall back to patching that instead.
+
 # v3.4.2
 
 Added Variables

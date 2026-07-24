@@ -12,6 +12,7 @@ import com.riprod.patchly.util.PathUtil;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -35,8 +36,19 @@ final class AssetTypeIndex implements AssetIndex {
     @Nullable
     Path upstreamBasePath(@Nonnull String target) {
         AssetStore<?, ?, ?> store = storeFor(target);
-        if (store == null) return null;
-        return upstreamPath(store, idOf(target, store.getExtension()));
+        Path identity = store == null ? null : upstreamPath(store, idOf(target, store.getExtension()));
+        return identity != null ? identity : mirrorBasePath(target);
+    }
+
+    @Nullable
+    private static Path mirrorBasePath(@Nonnull String target) {
+        Path best = null;
+        for (AssetPack p : AssetModule.get().getAssetPacks()) {
+            if (PatchManager.isSyntheticOverridePack(p.getName())) continue;
+            Path candidate = p.getRoot().resolve(target);
+            if (Files.isRegularFile(candidate)) best = candidate;
+        }
+        return best;
     }
 
     @Nullable
