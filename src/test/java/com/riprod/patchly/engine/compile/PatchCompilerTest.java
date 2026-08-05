@@ -159,6 +159,29 @@ class PatchCompilerTest {
     }
 
     @Test
+    void gatedSourceIsReported() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Foo.json", PATCH, "{ \"$Requires\": \"Some:Mod\", \"Tier\": 3 }"),
+                        source("b.patch", 1, "Bar.json", PATCH, "{ \"Tier\": 4 }")),
+                t -> parse("{}"), NONE_PRESENT);
+        assertEquals(1, out.outputs().size());
+        assertEquals(1, out.gatedSources().size());
+        CompileResult.GatedSource gated = out.gatedSources().get(0);
+        assertEquals(Path.of("a.patch"), gated.source());
+        assertEquals("Foo.json", gated.target());
+        assertEquals("$Requires", gated.directive());
+        assertEquals("\"Some:Mod\"", gated.condition());
+    }
+
+    @Test
+    void ungatedCompileReportsNoGatedSources() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Foo.json", PATCH, "{ \"$Requires\": \"Some:Mod\", \"Tier\": 3 }")),
+                t -> parse("{}"), ALL_PRESENT);
+        assertTrue(out.gatedSources().isEmpty());
+    }
+
+    @Test
     void putKindMergesOntoExistingBaseAndFillRespectsBase() {
         CompileResult out = compile(
                 List.of(source("a.put", 0, "Foo.json", PUT, "{ \"Color?\": \"white\", \"Tier\": 3 }")),

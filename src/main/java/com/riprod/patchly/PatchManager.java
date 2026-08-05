@@ -19,6 +19,7 @@ import com.hypixel.hytale.server.core.event.events.ShutdownEvent;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.PluginBase;
 import com.hypixel.hytale.server.core.plugin.PluginManager;
+import com.riprod.patchly.command.PatchlyCommand;
 import com.riprod.patchly.core.JsonDeepMerge;
 import com.riprod.patchly.core.compile.CompileResult;
 import com.riprod.patchly.core.compile.PatchCompiler;
@@ -45,12 +46,14 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
 public final class PatchManager implements PatchChangeListener {
@@ -67,7 +70,9 @@ public final class PatchManager implements PatchChangeListener {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
     private final Map<Path, String> patchToTarget = new ConcurrentHashMap<>();
     private final Map<String, List<PatchSource>> packSourceCache = new ConcurrentHashMap<>();
+    private final AtomicBoolean watchEnabled = new AtomicBoolean(true);
     private volatile boolean monitorInstalled = false;
+    private volatile CompileResult lastResult;
     private AssetTypeIndex assetLocator;
 
     private static final int LOOP_BREAKER_THRESHOLD = 10;
@@ -91,6 +96,7 @@ public final class PatchManager implements PatchChangeListener {
     public void install() {
         if (!election.claim()) return;
         store.wipe();
+        plugin.getCommandRegistry().registerCommand(new PatchlyCommand(this));
         plugin.getEventRegistry().register(EventPriority.LAST, LoadAssetEvent.class,
                 e -> rebuildAndApply("boot:LoadAssetEvent"));
         plugin.getEventRegistry().register(AssetPackRegisterEvent.class, e -> {
@@ -113,6 +119,35 @@ public final class PatchManager implements PatchChangeListener {
 
     public String getOverridePackName() {
         return registrar.packName();
+    }
+
+    @Nonnull
+    public String getOwnerId() {
+        return election.getOwnerId();
+    }
+
+    public boolean isWatchEnabled() {
+        return watchEnabled.get();
+    }
+
+    public boolean setWatchEnabled(boolean enabled) {
+        return watchEnabled.compareAndSet(!enabled, enabled);
+    }
+
+    @Nullable
+    public CompileResult getLastResult() {
+        return lastResult;
+    }
+
+    @Nonnull
+    public Set<String> getTrippedTargets() {
+        return Collections.unmodifiableSet(trippedTargets);
+    }
+
+    public synchronized Set<String> forceReapply(@Nonnull String reason) {
+        if (!election.isActive()) return Set.of();
+        if (registrar.needsRegister()) registrar.register();
+        return rebuildAndApply(reason);
     }
 
     public static boolean isSyntheticOverridePack(@Nonnull String name) {
@@ -156,7 +191,7 @@ public final class PatchManager implements PatchChangeListener {
             return desired.keySet();
         }
 
-        boolean firstRegister = !registrar.isRegistered();
+        boolean firstRegister = registrar.needsRegister();
         if (firstRegister) {
             registrar.register();
         }
@@ -197,9 +232,15 @@ public final class PatchManager implements PatchChangeListener {
             LOGGER.at(Level.WARNING).log(
                     "[patcher] unresolved expression at %s (\"%s\"): %s", ue.where(), ue.expression(), ue.reason());
         }
+        for (CompileResult.GatedSource gs : result.gatedSources()) {
+            LOGGER.at(Level.INFO).log(
+                    "[patcher] skipped %s (target %s): %s %s not satisfied",
+                    gs.source(), gs.target(), gs.directive(), gs.condition());
+        }
 
         patchToTarget.clear();
         patchToTarget.putAll(result.sourceToTarget());
+        lastResult = result;
         return result;
     }
 
@@ -336,6 +377,7 @@ public final class PatchManager implements PatchChangeListener {
     @Override
     public void onPatchEvent(@Nonnull AssetPack pack, @Nonnull Path patchFile) {
         if (!election.isActive()) return;
+        if (!watchEnabled.get()) return;
         if (!isSourceFile(patchFile)) return;
         packSourceCache.remove(pack.getName());
         consecutiveWrites.clear();
@@ -364,6 +406,7 @@ public final class PatchManager implements PatchChangeListener {
     @Override
     public void onBaseEvent(@Nonnull AssetPack pack, @Nonnull Path changedJson) {
         if (!election.isActive()) return;
+        if (!watchEnabled.get()) return;
         rebuildAndApply("baseEdit:" + pack.getName() + ":" + changedJson.getFileName());
     }
 

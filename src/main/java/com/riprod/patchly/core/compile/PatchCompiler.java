@@ -39,6 +39,7 @@ public final class PatchCompiler {
             @Nullable AssetIndex assetIndex) {
         List<RootDirective> roots = table.directives().rootDirectives();
 
+        List<CompileResult.GatedSource> gated = new ArrayList<>();
         List<Ordered> ordered = new ArrayList<>(sources.size());
         for (PatchSource s : sources) {
             JsonObject patch = s.patchJson();
@@ -49,6 +50,8 @@ public final class PatchCompiler {
                 if (value == null)
                     continue;
                 if (!rd.keep(value, ctx)) {
+                    gated.add(new CompileResult.GatedSource(
+                            s.id(), s.targetRelative(), rd.markerKey(), value.toString()));
                     keep = false;
                     break;
                 }
@@ -110,7 +113,7 @@ public final class PatchCompiler {
             sourceToTarget.put(s.id(), target);
         }
 
-        return new CompileResult(outputs, sourceToTarget, missing, unresolved, expressions);
+        return new CompileResult(outputs, sourceToTarget, missing, unresolved, expressions, gated);
     }
 
     private record Ordered(PatchSource source, int priority) {

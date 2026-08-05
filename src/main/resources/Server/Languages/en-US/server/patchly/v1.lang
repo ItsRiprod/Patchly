@@ -1,0 +1,26 @@
+command.desc=Patchly patch system status and controls
+command.reload.desc=Rebuild and re-apply all patches
+command.info.desc=Show Patchly status and patch diagnostics
+command.watcher.desc=Control the patch source file watcher
+command.watcher.start.desc=Enable the patch source file watcher
+command.watcher.stop.desc=Disable the patch source file watcher
+
+info.header=Patchly {version}
+info.owner=Owned by {owner}
+info.pack=Override pack: {pack}
+info.watcherOn=Source file watcher: enabled
+info.watcherOff=Source file watcher: disabled
+info.clean=No patch problems reported
+info.missingBase=No base asset for {source} (looking for {target})
+info.unresolvedImport=Unresolved $Import '{ref}' from {target}
+info.unresolvedExpression=Unresolved expression at {where} ({expression}): {reason}
+info.gated=Skipped {source}: {directive} {condition} not satisfied
+info.tripped=Loop breaker froze {target}
+
+reload.done=Patchly rebuilt {count} patch output(s)
+watcher.started=Patch source file watcher enabled
+watcher.stopped=Patch source file watcher disabled
+watcher.alreadyStarted=Patch source file watcher is already enabled
+watcher.alreadyStopped=Patch source file watcher is already disabled
+watcher.needsFlag=Specify exactly one of --start or --stop
+watcher.staleWarning=Edits made while stopped were not tracked; run /patchly reload to pick them up

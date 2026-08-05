@@ -76,6 +76,11 @@ public final class OwnershipElection {
         return winner;
     }
 
+    @Nonnull
+    public String getOwnerId() {
+        return ownerId;
+    }
+
     private boolean isWinner() {
         return ownerId.equals(System.getProperty(SYS_PROP_OWNER))
                 && version.equals(System.getProperty(SYS_PROP_VERSION));
