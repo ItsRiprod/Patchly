@@ -1,26 +1,18 @@
 command.desc=Patchly patch system status and controls
 command.reload.desc=Rebuild and re-apply all patches
-command.info.desc=Show Patchly status and patch diagnostics
+command.info.desc=Show Patchly status
 command.watcher.desc=Control the patch source file watcher
 command.watcher.start.desc=Enable the patch source file watcher
 command.watcher.stop.desc=Disable the patch source file watcher
 
-info.header=Patchly {version}
-info.owner=Owned by {owner}
-info.pack=Override pack: {pack}
-info.watcherOn=Source file watcher: enabled
-info.watcherOff=Source file watcher: disabled
-info.clean=No patch problems reported
-info.missingBase=No base asset for {source} (looking for {target})
-info.unresolvedImport=Unresolved $Import '{ref}' from {target}
-info.unresolvedExpression=Unresolved expression at {where} ({expression}): {reason}
-info.gated=Skipped {source}: {directive} {condition} not satisfied
-info.tripped=Loop breaker froze {target}
+prefix=<color is="#ffaa00"><b>[Patchly]</b></color>
+enabled=<color is="#55ff55">enabled</color>
+disabled=<color is="#888888">disabled</color>
 
-reload.done=Patchly rebuilt {count} patch output(s)
-watcher.started=Patch source file watcher enabled
-watcher.stopped=Patch source file watcher disabled
-watcher.alreadyStarted=Patch source file watcher is already enabled
-watcher.alreadyStopped=Patch source file watcher is already disabled
-watcher.needsFlag=Specify exactly one of --start or --stop
-watcher.staleWarning=Edits made while stopped were not tracked; run /patchly reload to pick them up
+info.body=<color is="#ffaa00"><b>Patchly {version}</b></color>\n  <color is="#888888">Owner</color>    {owner}\n  <color is="#888888">Pack</color>     {pack}\n  <color is="#888888">Watcher</color>  {state}\n  <color is="#888888">Applied</color>  {applied}   <color is="#888888">Skipped</color>  {skipped}   <color is="#888888">Errors</color>  {errors}
+
+reload.done=<msg key="server.patchly.v1.prefix"/> Rebuilt {count} patch output(s)
+watcher.started=<msg key="server.patchly.v1.prefix"/> File watcher <msg key="server.patchly.v1.enabled"/>\n<color is="#888888">Edits made while stopped were not tracked; run <b>/patchly reload</b> to pick them up</color>
+watcher.stopped=<msg key="server.patchly.v1.prefix"/> File watcher <msg key="server.patchly.v1.disabled"/>
+watcher.already=<msg key="server.patchly.v1.prefix"/> <color is="#888888">File watcher is already in that state</color>
+watcher.needsFlag=<msg key="server.patchly.v1.prefix"/> <color is="#ff5555">Specify exactly one of --start or --stop</color>
