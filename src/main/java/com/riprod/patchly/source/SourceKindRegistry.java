@@ -2,6 +2,7 @@ package com.riprod.patchly.source;
 
 import com.riprod.patchly.registry.KeyValidator;
 import com.riprod.patchly.registry.Registry;
+import com.riprod.patchly.source.kinds.BatchKind;
 import com.riprod.patchly.source.kinds.PatchKind;
 import com.riprod.patchly.source.kinds.PutKind;
 import com.riprod.patchly.source.kinds.VarsKind;
@@ -16,6 +17,7 @@ public final class SourceKindRegistry {
         REGISTRY.register(new PatchKind());
         REGISTRY.register(new PutKind());
         REGISTRY.register(new VarsKind());
+        REGISTRY.register(new BatchKind());
     }
 
     private SourceKindRegistry() {}

@@ -27,6 +27,7 @@ import com.riprod.patchly.core.compile.PatchSource;
 import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.election.OwnershipElection;
 import com.riprod.patchly.reload.MonitorInstaller;
+import com.riprod.patchly.source.BasePolicy;
 import com.riprod.patchly.source.SourceKind;
 import com.riprod.patchly.source.SourceKindRegistry;
 import com.riprod.patchly.source.SourceKindTable;
@@ -144,6 +145,12 @@ public final class PatchManager implements PatchChangeListener {
         return Collections.unmodifiableSet(trippedTargets);
     }
 
+    @Nullable
+    public Path getBasePath(@Nonnull String relativeTarget) {
+        AssetTypeIndex locator = this.assetLocator;
+        return locator == null ? null : locator.upstreamBasePath(relativeTarget);
+    }
+
     public synchronized Set<String> forceReapply(@Nonnull String reason) {
         if (!election.isActive()) return Set.of();
         if (registrar.needsRegister()) registrar.register();
@@ -186,7 +193,7 @@ public final class PatchManager implements PatchChangeListener {
         }
 
         if (changed.isEmpty()) {
-            LOGGER.at(Level.FINE).log(
+            LOGGER.atFine().log(
                     "[patcher] noop %s - all %d output(s) byte-identical to disk", reason, desired.size());
             return desired.keySet();
         }
@@ -233,9 +240,15 @@ public final class PatchManager implements PatchChangeListener {
                     "[patcher] unresolved expression at %s (\"%s\"): %s", ue.where(), ue.expression(), ue.reason());
         }
         for (CompileResult.GatedSource gs : result.gatedSources()) {
-            LOGGER.at(Level.INFO).log(
-                    "[patcher] skipped %s (target %s): %s %s not satisfied",
-                    gs.source(), gs.target(), gs.directive(), gs.condition());
+            if (gs.scope() == null) {
+                LOGGER.atFine().log(
+                        "[patcher] skipped %s (target %s): %s %s not satisfied",
+                        gs.source(), gs.target(), gs.directive(), gs.condition());
+            } else {
+                LOGGER.atFine().log(
+                        "[patcher] skipped %s: scoped by %s whose %s %s is not satisfied",
+                        gs.source(), gs.scope(), gs.directive(), gs.condition());
+            }
         }
 
         patchToTarget.clear();
@@ -268,7 +281,7 @@ public final class PatchManager implements PatchChangeListener {
                         : new PatchSource(s.id(), i, s.targetRelative(), s.kind(), s.patchJson()));
             }
         }
-        LOGGER.at(Level.FINE).log("[patcher] discovered %d source(s) (%d pack(s) walked, %d cached)",
+        LOGGER.atFine().log("[patcher] discovered %d source(s) (%d pack(s) walked, %d cached)",
                 out.size(), walked, cached);
         return out;
     }
@@ -290,7 +303,8 @@ public final class PatchManager implements PatchChangeListener {
                             String relSource = PathUtil.normalizeRelative(root, file);
                             String stem = PathUtil.stripSuffix(relSource, kind.extension());
                             if (stem == null) return FileVisitResult.CONTINUE;
-                            String target = PathUtil.recoverTargetExtension(stem);
+                            String target = kind.basePolicy() == BasePolicy.SCOPE
+                                    ? "" : PathUtil.recoverTargetExtension(stem);
                             out.add(new PatchSource(file, packIndex, target, kind, json));
                             return FileVisitResult.CONTINUE;
                         }

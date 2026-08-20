@@ -22,6 +22,7 @@ Looking for one specific operator or meta-key? Jump straight to the page that de
 | `$Match` | locate which array element to merge | [Match-Array-Element](Match-Array-Element) |
 | `$Requires` | apply only if certain packs are installed | [Parent-Override](Conditional-Override), [Droplists](Droplists) |
 | `$Priority` | decide the winner when patches conflict | [Quality-Override](Quality-Override) |
+| `.batch` | gate and decorate a whole folder at once | [Batch-Folder](Batch-Folder) |
 | nested merge | change one field deep inside an object | [Recipe-Change](Recipe-Change), [Player-Stat](Player-Stat) |
 | field replace | overwrite a single scalar value | [Quality-Override](Quality-Override) |
 | forward reference | name an id from a later-loading pack | [Load-Order](Load-Order) |
@@ -47,6 +48,7 @@ Looking for one specific operator or meta-key? Jump straight to the page that de
 | 12 | [Add a stat only if the item doesn't already have it](Fill-If-Absent) | `?` fill-if-absent |
 | 13 | [Put your entries at the front of an array](Prepend-Array) | `-` prepend |
 | 14 | [Balance a whole armor set from one number](Variables) | `.vars` + `#` expression |
+| 15 | [Put a whole folder of patches behind one condition](Batch-Folder) | `.batch` folder scope |
 
 ## What Patchly can and cannot patch (for now)
 

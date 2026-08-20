@@ -4,6 +4,8 @@ command.info.desc=Show Patchly status
 command.watcher.desc=Control the patch source file watcher
 command.watcher.start.desc=Enable the patch source file watcher
 command.watcher.stop.desc=Disable the patch source file watcher
+command.explain.desc=Show every source that built one patched asset
+command.explain.target.desc=Asset id or pack-relative path to explain
 
 prefix=<color is="#ffaa00"><b>[Patchly]</b></color>
 enabled=<color is="#55ff55">enabled</color>
@@ -16,3 +18,13 @@ watcher.started=<msg key="server.patchly.v1.prefix"/> File watcher <msg key="ser
 watcher.stopped=<msg key="server.patchly.v1.prefix"/> File watcher <msg key="server.patchly.v1.disabled"/>
 watcher.already=<msg key="server.patchly.v1.prefix"/> <color is="#888888">File watcher is already in that state</color>
 watcher.needsFlag=<msg key="server.patchly.v1.prefix"/> <color is="#ff5555">Specify exactly one of --start or --stop</color>
+
+explain.noResult=<msg key="server.patchly.v1.prefix"/> <color is="#888888">Nothing composed yet; run <b>/patchly reload</b></color>
+explain.notFound=<msg key="server.patchly.v1.prefix"/> <color is="#ff5555">No patched asset matches <b>{target}</b></color>
+explain.ambiguous=<msg key="server.patchly.v1.prefix"/> <color is="#ff5555"><b>{target}</b> matches more than one asset</color>\n  <color is="#888888">{matches}</color>
+explain.header=<color is="#ffaa00"><b>{target}</b></color>\n  <color is="#888888">Base</color>  {base}
+explain.line=  <color is="#55ff55">{kind}</color>  {source}  <color is="#888888">priority {priority}</color>
+explain.gated=  <color is="#888888">skipped</color>  {source}  <color is="#888888">{directive} {condition}</color>
+explain.missingBase=  <color is="#ff5555">no base</color>  {source}
+explain.unresolvedImport=  <color is="#ff5555">unresolved $Import</color>  {ref}
+explain.tripped=  <color is="#ff5555">loop breaker tripped, output frozen</color>

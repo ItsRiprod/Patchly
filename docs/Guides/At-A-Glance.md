@@ -58,6 +58,43 @@ The headline case is an asset that only makes sense alongside another mod. Pair 
 
 If the asset already exists, a `.put` merges onto it rather than skipping. To create-but-never-clobber, tag the fields you only want to seed with `?` (fill-if-absent), e.g. `"Damage?": 12` leaves an existing `Damage` untouched.
 
+## Rules for a whole folder with `.batch`
+
+A `.batch` has no target of its own. Its reserved keys gate every source at or below its directory, and its body merges once into every target those sources produce. Use it when a group of patches share a condition, a decoration, or both:
+
+`Server/Item/Items/Patches/Hexcode/HexcodeGate.batch`
+```json
+{
+  "$Requires": "Riprod:Hexcode",
+  "Tags": { "Imbuement+": ["Imbuement Slot"] }
+}
+```
+
+Without Hexcode, every `.patch` and `.put` in that folder is skipped. With Hexcode, they all apply and every asset they touch also gains the imbuement tag, without any of them naming it. Drop a new patch into the folder later and it inherits both, which is the point: the folder is the condition.
+
+The body accepts everything a `.patch` does, including `+`, `-`, `~`, `?`, `null` deletes, `$Match` and `#` expressions.
+
+| | Applies to |
+|---|---|
+| `.patch` / `.put` | its own target |
+| `.batch` reserved keys | every source at or below its folder |
+| `.batch` body | every target those sources produce, once each |
+
+Name it anything you wish; Avoid naming it after a real asset, since that reads as if it targets one.
+
+> Note: This does __not__ apply to .json files due to technical limitations of hytale and overhead
+
+### Nesting and precedence
+
+`.batch` files nest. Requirements combine, so an inner folder can narrow an outer one but never widen it. Bodies layer outer first, so an inner `.batch` overrides an outer one.
+
+Within a folder, a sibling `.patch` overrides the `.batch` body at equal priority, because the folder default is meant to be overridable. Give the `.batch` a higher `$Priority` when you want it to win instead.
+
+### Two boundaries
+
+- A `.batch` decorates targets, it never creates one. If no `.patch` or `.put` produces the asset, the batch contributes nothing to it. To create assets conditionally, put a `.put` in the folder.
+- `.vars` are exempt from batch gating. A gated folder still contributes its variable scopes, so a patch elsewhere referencing `$Scope.Name` cannot break just because an unrelated mod is missing.
+
 ## Reusing a template with `$Import`
 
 When several assets share a chunk of configuration, define it once and `$Import` it instead of copy-pasting. The imported asset is layered in as a base; your own keys override it:

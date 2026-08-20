@@ -104,7 +104,13 @@ Multiple packs (all must be present):
 
 Pack ids are matched against `AssetPack.getName()` (i.e. `Group:Name` from the target mod's manifest). If anything's missing the patch is skipped with a log line.
 
-There is currently no support for excluding packs. This was deemed unnecessary, open a PR if you wish to have this functionality.
+Entries in the list are ANDed. Inside one entry, comma-separated packs are ORed, and a leading `-` requires a pack to be absent:
+
+```json
+{ "$Requires": ["Author:A", "-Author:B", "Author:C,Author:D"] }
+```
+
+reads as `A && !B && (C or D)`. Avoid commas inside a version range, since the comma is the OR separator.
 
 ### `$Priority` - pick a winner on conflicts
 

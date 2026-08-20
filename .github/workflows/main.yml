@@ -1,6 +1,9 @@
 name: Publish Mod
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -20,6 +23,8 @@ jobs:
       MODIFOLD_KEY: ${{ secrets.MODIFOLD_KEY }}
       TCLI_AUTH_TOKEN: ${{ secrets.TCLI_AUTH_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+      MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -31,13 +36,16 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 25
+          java-version: 26
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
+
+      - name: Build artifacts
+        run: ./gradlew build -Dorg.gradle.java.home="$JAVA_HOME"
 
       - name: Publish enabled platforms
         run: ./gradlew publishAll -Dorg.gradle.java.home="$JAVA_HOME"
