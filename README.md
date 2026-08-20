@@ -141,33 +141,47 @@ Drop `Patchly-X.Y.Z.jar` into your server's `mods/` folder alongside your asset 
 
 ### As a bundled dep (Java mods)
 
-Add the Shadow plugin and depend on the lib jar:
+Add the Shadow plugin and depend on the lib jar.
 
-```kotlin
+`build.gradle`:
+
+```groovy
 plugins {
-    id("hytale-mod") version "0.+"
-    id("com.gradleup.shadow") version "8.3.5"
+    id 'java'
+    // Recommended to use azuredoom.hytale-tools as the dev wrapper. Otherwise, include https://maven.hytalemodding.dev/releases
+    id 'com.azuredoom.hytale-tools' version '1.0.48'
+    id 'com.gradleup.shadow' version '8.3.5'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of((project.java_version as String).toInteger())
+    }
 }
 
 // a dedicated configuration so ONLY Patchly is shaded, not your compile deps
-val shaded by configurations.creating
+configurations {
+    shaded
+}
 
 dependencies {
     // compile against the API, and mark it for shading into the final jar
-    shaded(files("deps/Patchly-3.1.1.jar"))
-    implementation(files("deps/Patchly-3.1.1.jar"))
+    // 3.+ tracks the latest 3.x release without jumping a breaking major
+    shaded 'com.riprod:patchly:3.+'
+    implementation 'com.riprod:patchly:3.+'
 }
 
-tasks.shadowJar {
-    archiveClassifier.set("")        // shadow jar IS the published artifact
+tasks.named('shadowJar') {
+    archiveClassifier = ''                              // shadow jar IS the published artifact
     mergeServiceFiles()
-    configurations = listOf(shaded)  // shade only what's in `shaded`
-    relocate("com.riprod.patchly", "com.riprod.<your pack id>.shaded.patchly")
+    configurations = [project.configurations.shaded]    // shade only what's in `shaded`
 }
 
-tasks.jar { enabled = false }        // disable the thin jar
-tasks.build { dependsOn(tasks.shadowJar) }
+tasks.named('jar') { enabled = false }                  // disable the thin jar
+tasks.named('build') { dependsOn tasks.named('shadowJar') }
 ```
+
+Gradle caches dynamic versions for 24 hours - run `./gradlew build --refresh-dependencies` to pick up a new 3.x immediately.
 
 Then in your `JavaPlugin`:
 

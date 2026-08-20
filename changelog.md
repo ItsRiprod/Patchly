@@ -1,3 +1,6 @@
+# v3.5.1
+Dropped Java version from 26 to 25 for compatibility
+
 # v3.5.0
 
 Added `.batch`, a folder-scoped patch whose reserved keys gate every source at or below its directory and whose body merges once into every target those sources produce.
