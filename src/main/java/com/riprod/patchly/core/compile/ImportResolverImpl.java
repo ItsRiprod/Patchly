@@ -54,8 +54,8 @@ public final class ImportResolverImpl implements ImportResolver {
         active.push(target);
         JsonObject acc;
         try {
-            JsonObject base = baseResolver.resolveBase(target);
-            acc = base != null ? base.deepCopy() : new JsonObject();
+            BaseResolver.ResolvedBase base = baseResolver.resolveBase(target);
+            acc = base != null ? base.json().deepCopy() : new JsonObject();
             for (JsonObject put : putsByTarget.getOrDefault(target, List.of())) {
                 acc = JsonDeepMerge.merge(acc, put, table, ctx, this, target);
             }

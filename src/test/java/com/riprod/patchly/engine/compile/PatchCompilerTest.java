@@ -27,6 +27,7 @@ class PatchCompilerTest {
     private static final MergeTable TABLE = JsonDeepMerge.activeTable();
     private static final SourceKind PATCH = new PatchKind();
     private static final SourceKind PUT = new PutKind();
+    private static final String ID = "Item/Items|X.json";
 
     private static final PatchContext ALL_PRESENT = new PatchContext() {
         @Override
@@ -60,6 +61,11 @@ class PatchCompilerTest {
         return new PatchSource(Path.of(id), loadIndex, target, kind, parse(json));
     }
 
+    private static PatchSource sourceAt(String id, int loadIndex, String target, String identity,
+            SourceKind kind, String json) {
+        return new PatchSource(Path.of(id), loadIndex, target, identity, kind, parse(json));
+    }
+
     private static CompileResult compile(List<PatchSource> sources, BaseResolver bases, PatchContext ctx) {
         return new PatchCompiler().compile(sources, bases, ctx, TABLE);
     }
@@ -69,7 +75,7 @@ class PatchCompilerTest {
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH,
                         "{ \"Children~\": [ { \"$Requires\": \"Some:Mod\", \"$Match\": \"Id\", \"Id\": \"Cloth\", \"Name\": \"patched\" } ] }")),
-                t -> parse("{ \"Children\": [ { \"Id\": \"Cloth\", \"Name\": \"base\" } ] }"), NONE_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{ \"Children\": [ { \"Id\": \"Cloth\", \"Name\": \"base\" } ] }")), NONE_PRESENT);
         JsonObject cloth = out.outputs().get("Foo.json").getAsJsonArray("Children").get(0).getAsJsonObject();
         assertEquals("base", cloth.get("Name").getAsString());
         assertFalse(out.outputs().get("Foo.json").toString().contains("$Requires"));
@@ -80,7 +86,7 @@ class PatchCompilerTest {
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH,
                         "{ \"Children~\": [ { \"$Requires\": \"Some:Mod\", \"$Match\": \"Id\", \"Id\": \"Cloth\", \"Name\": \"patched\" } ] }")),
-                t -> parse("{ \"Children\": [ { \"Id\": \"Cloth\", \"Name\": \"base\" } ] }"), ALL_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{ \"Children\": [ { \"Id\": \"Cloth\", \"Name\": \"base\" } ] }")), ALL_PRESENT);
         JsonObject cloth = out.outputs().get("Foo.json").getAsJsonArray("Children").get(0).getAsJsonObject();
         assertEquals("patched", cloth.get("Name").getAsString());
         assertFalse(out.outputs().get("Foo.json").toString().contains("$Requires"));
@@ -93,7 +99,7 @@ class PatchCompilerTest {
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH,
                         "{ \"TranslationProperties\": { \"$Requires\": \"Some:Mod\", \"Name\": \"patched\" } }")),
-                t -> parse("{ \"TranslationProperties\": { \"Name\": \"base\" } }"), NONE_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{ \"TranslationProperties\": { \"Name\": \"base\" } }")), NONE_PRESENT);
         JsonObject tp = out.outputs().get("Foo.json").getAsJsonObject("TranslationProperties");
         assertEquals("base", tp.get("Name").getAsString());
         assertFalse(out.outputs().get("Foo.json").toString().contains("$Requires"));
@@ -104,7 +110,7 @@ class PatchCompilerTest {
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH,
                         "{ \"TranslationProperties\": { \"$Requires\": \"Some:Mod\", \"Name\": \"patched\" } }")),
-                t -> parse("{ \"TranslationProperties\": { \"Name\": \"base\" } }"), ALL_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{ \"TranslationProperties\": { \"Name\": \"base\" } }")), ALL_PRESENT);
         JsonObject tp = out.outputs().get("Foo.json").getAsJsonObject("TranslationProperties");
         assertEquals("patched", tp.get("Name").getAsString());
         assertFalse(out.outputs().get("Foo.json").toString().contains("$Requires"));
@@ -115,7 +121,7 @@ class PatchCompilerTest {
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH,
                         "{ \"$Requires\": \"Some:Mod\", \"Tier\": 3 }")),
-                t -> parse("{ \"Tier\": 1 }"), NONE_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{ \"Tier\": 1 }")), NONE_PRESENT);
         assertTrue(out.outputs().isEmpty());
     }
 
@@ -125,7 +131,7 @@ class PatchCompilerTest {
         // ordering
         CompileResult out = compile(List.of(
                 source("late.patch", 9, "Foo.json", PATCH, "{ \"$Priority\": 100, \"V\": \"high\" }"),
-                source("early.patch", 0, "Foo.json", PATCH, "{ \"V\": \"low\" }")), t -> parse("{}"), ALL_PRESENT);
+                source("early.patch", 0, "Foo.json", PATCH, "{ \"V\": \"low\" }")), t -> new BaseResolver.ResolvedBase(t, parse("{}")), ALL_PRESENT);
         assertEquals("high", out.outputs().get("Foo.json").get("V").getAsString());
     }
 
@@ -163,7 +169,7 @@ class PatchCompilerTest {
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH, "{ \"$Requires\": \"Some:Mod\", \"Tier\": 3 }"),
                         source("b.patch", 1, "Bar.json", PATCH, "{ \"Tier\": 4 }")),
-                t -> parse("{}"), NONE_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{}")), NONE_PRESENT);
         assertEquals(1, out.outputs().size());
         assertEquals(1, out.gatedSources().size());
         CompileResult.GatedSource gated = out.gatedSources().get(0);
@@ -177,7 +183,7 @@ class PatchCompilerTest {
     void ungatedCompileReportsNoGatedSources() {
         CompileResult out = compile(
                 List.of(source("a.patch", 0, "Foo.json", PATCH, "{ \"$Requires\": \"Some:Mod\", \"Tier\": 3 }")),
-                t -> parse("{}"), ALL_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{}")), ALL_PRESENT);
         assertTrue(out.gatedSources().isEmpty());
     }
 
@@ -185,7 +191,7 @@ class PatchCompilerTest {
     void putKindMergesOntoExistingBaseAndFillRespectsBase() {
         CompileResult out = compile(
                 List.of(source("a.put", 0, "Foo.json", PUT, "{ \"Color?\": \"white\", \"Tier\": 3 }")),
-                t -> parse("{ \"Color\": \"red\" }"), ALL_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{ \"Color\": \"red\" }")), ALL_PRESENT);
         JsonObject result = out.outputs().get("Foo.json");
         assertEquals("red", result.get("Color").getAsString());
         assertEquals(3, result.get("Tier").getAsInt());
@@ -217,7 +223,7 @@ class PatchCompilerTest {
         CompileResult out = compile(List.of(
                 source("a.patch", 0, "Foo.json", PATCH, "{ \"A\": 1 }"),
                 source("b.patch", 1, "Foo.json", PATCH, "{ \"B\": 2 }")),
-                t -> parse("{ \"Base\": true }"), ALL_PRESENT);
+                t -> new BaseResolver.ResolvedBase(t, parse("{ \"Base\": true }")), ALL_PRESENT);
         JsonObject result = out.outputs().get("Foo.json");
         assertTrue(result.get("Base").getAsBoolean());
         assertEquals(1, result.get("A").getAsInt());
@@ -225,5 +231,68 @@ class PatchCompilerTest {
         assertFalse(result.has("$Priority"));
         Map<Path, String> tracking = out.sourceToTarget();
         assertEquals("Foo.json", tracking.get(Path.of("a.patch")));
+    }
+
+    @Test
+    void subfolderPatchSharesTheAccumulatorOfItsPutSibling() {
+        CompileResult out = compile(List.of(
+                sourceAt("A/X.put", 0, "A/X.json", ID, PUT, "{ \"Made\": true }"),
+                sourceAt("A/Sub/X.patch", 0, "A/Sub/X.json", ID, PATCH, "{ \"Name\": \"custom\" }")),
+                t -> null, ALL_PRESENT);
+
+        assertTrue(out.missingBases().isEmpty());
+        assertEquals(1, out.outputs().size());
+        JsonObject result = out.outputs().get("A/X.json");
+        assertTrue(result.get("Made").getAsBoolean());
+        assertEquals("custom", result.get("Name").getAsString());
+    }
+
+    @Test
+    void putSeedsSiblingPatchRegardlessOfSourceOrder() {
+        JsonObject putFirst = compile(List.of(
+                sourceAt("A/X.put", 0, "A/X.json", ID, PUT, "{ \"Made\": true }"),
+                sourceAt("A/Sub/X.patch", 0, "A/Sub/X.json", ID, PATCH, "{ \"Name\": \"custom\" }")),
+                t -> null, ALL_PRESENT).outputs().get("A/X.json");
+
+        JsonObject patchFirst = compile(List.of(
+                sourceAt("A/Sub/X.patch", 0, "A/Sub/X.json", ID, PATCH, "{ \"Name\": \"custom\" }"),
+                sourceAt("A/X.put", 0, "A/X.json", ID, PUT, "{ \"Made\": true }")),
+                t -> null, ALL_PRESENT).outputs().get("A/X.json");
+
+        assertEquals(putFirst, patchFirst);
+    }
+
+    @Test
+    void collapsedGroupWritesAtTheUpstreamBasePath() {
+        CompileResult out = compile(List.of(
+                sourceAt("A/Sub/X.patch", 0, "A/Sub/X.json", ID, PATCH, "{ \"Name\": \"custom\" }")),
+                t -> new BaseResolver.ResolvedBase("A/X.json", parse("{ \"Base\": true }")), ALL_PRESENT);
+
+        assertEquals(1, out.outputs().size());
+        assertTrue(out.outputs().containsKey("A/X.json"));
+        assertEquals("A/X.json", out.sourceToTarget().get(Path.of("A/Sub/X.patch")));
+        assertEquals(1, out.contributions().get("A/X.json").size());
+    }
+
+    @Test
+    void putMergesBeforePatchesAtEqualPriority() {
+        for (List<PatchSource> order : List.of(
+                List.of(sourceAt("A/X.put", 0, "A/X.json", ID, PUT, "{ \"Name\": \"upstream\" }"),
+                        sourceAt("A/Sub/X.patch", 0, "A/Sub/X.json", ID, PATCH, "{ \"Name\": \"custom\" }")),
+                List.of(sourceAt("A/Sub/X.patch", 0, "A/Sub/X.json", ID, PATCH, "{ \"Name\": \"custom\" }"),
+                        sourceAt("A/X.put", 0, "A/X.json", ID, PUT, "{ \"Name\": \"upstream\" }")))) {
+            JsonObject result = compile(order, t -> null, ALL_PRESENT).outputs().get("A/X.json");
+            assertEquals("custom", result.get("Name").getAsString());
+        }
+    }
+
+    @Test
+    void deeperPatchOverridesShallowerAtEqualPriority() {
+        CompileResult out = compile(List.of(
+                sourceAt("A/Sub/X.patch", 0, "A/Sub/X.json", ID, PATCH, "{ \"Name\": \"deep\" }"),
+                sourceAt("A/X.patch", 0, "A/X.json", ID, PATCH, "{ \"Name\": \"shallow\" }")),
+                t -> new BaseResolver.ResolvedBase("A/X.json", parse("{}")), ALL_PRESENT);
+
+        assertEquals("deep", out.outputs().get("A/X.json").get("Name").getAsString());
     }
 }

@@ -77,7 +77,8 @@ class BatchCompilerTest {
     }
 
     private static BaseResolver bases(Map<String, String> map) {
-        return target -> map.containsKey(target) ? parse(map.get(target)) : null;
+        return target -> map.containsKey(target)
+                ? new BaseResolver.ResolvedBase(target, parse(map.get(target))) : null;
     }
 
     @Test

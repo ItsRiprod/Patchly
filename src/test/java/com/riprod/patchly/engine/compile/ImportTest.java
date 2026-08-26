@@ -1,5 +1,6 @@
 package com.riprod.patchly.engine.compile;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.riprod.patchly.core.JsonDeepMerge;
@@ -50,7 +51,8 @@ class ImportTest {
     }
 
     private static BaseResolver bases(Map<String, String> map) {
-        return target -> map.containsKey(target) ? parse(map.get(target)) : null;
+        return target -> map.containsKey(target)
+                ? new BaseResolver.ResolvedBase(target, parse(map.get(target))) : null;
     }
 
     private static AssetIndex index(Map<String, String> refToTarget) {
@@ -214,5 +216,93 @@ class ImportTest {
         JsonObject extra = out.outputs().get("Foo.json").getAsJsonObject("Extra");
         assertEquals(1, extra.get("a").getAsInt());
         assertFalse(out.outputs().get("Foo.json").toString().contains("$Import"));
+    }
+
+    @Test
+    void arrayImportWithMatchMergesTheMatchingImportedElement() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Item.json", PATCH,
+                        "{ \"Skills~\": [ { \"$Match\": \"Id\", \"$Import\": \"Template\","
+                                + " \"Id\": \"Strike\", \"Damage\": 12 } ] }")),
+                bases(Map.of(
+                        "Item.json", "{ \"Skills\": [ { \"Id\": \"Strike\" } ] }",
+                        "Template.json", "{ \"Skills\": [ { \"Id\": \"Other\", \"Cooldown\": 1 },"
+                                + " { \"Id\": \"Strike\", \"Cooldown\": 5, \"Damage\": 3 } ] }")),
+                index(Map.of("Template", "Template.json")));
+
+        JsonObject skill = out.outputs().get("Item.json")
+                .getAsJsonArray("Skills").get(0).getAsJsonObject();
+        assertEquals(5, skill.get("Cooldown").getAsInt());
+        assertEquals(12, skill.get("Damage").getAsInt());
+        assertFalse(skill.has("$Import"));
+        assertFalse(skill.has("$Match"));
+    }
+
+    @Test
+    void arrayImportSeedsAnAppendedElementOnLocatorMiss() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Item.json", PATCH,
+                        "{ \"Skills+\": [ { \"$Match\": \"Id\", \"$Import\": \"Template\","
+                                + " \"Id\": \"Strike\", \"Damage\": 12 } ] }")),
+                bases(Map.of(
+                        "Item.json", "{ \"Skills\": [ { \"Id\": \"Existing\" } ] }",
+                        "Template.json", "{ \"Skills\": [ { \"Id\": \"Strike\", \"Cooldown\": 5,"
+                                + " \"Damage\": 3 } ] }")),
+                index(Map.of("Template", "Template.json")));
+
+        JsonArray skills = out.outputs().get("Item.json").getAsJsonArray("Skills");
+        assertEquals(2, skills.size());
+        JsonObject added = skills.get(1).getAsJsonObject();
+        assertEquals(5, added.get("Cooldown").getAsInt());
+        assertEquals(12, added.get("Damage").getAsInt());
+        assertFalse(added.has("$Import"));
+    }
+
+    @Test
+    void arrayImportContributesNothingWhenImportedArrayHasNoMatch() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Item.json", PATCH,
+                        "{ \"Skills~\": [ { \"$Match\": \"Id\", \"$Import\": \"Template\","
+                                + " \"Id\": \"Strike\", \"Damage\": 12 } ] }")),
+                bases(Map.of(
+                        "Item.json", "{ \"Skills\": [ { \"Id\": \"Strike\" } ] }",
+                        "Template.json", "{ \"Skills\": [ { \"Id\": \"Nope\", \"Cooldown\": 5 } ] }")),
+                index(Map.of("Template", "Template.json")));
+
+        JsonObject skill = out.outputs().get("Item.json")
+                .getAsJsonArray("Skills").get(0).getAsJsonObject();
+        assertEquals(12, skill.get("Damage").getAsInt());
+        assertFalse(skill.has("Cooldown"));
+        assertFalse(skill.has("$Import"));
+    }
+
+    @Test
+    void arrayImportWithoutALocatorStaysANoOp() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Item.json", PATCH,
+                        "{ \"Skills+\": [ { \"$Import\": \"Template\", \"Id\": \"Strike\" } ] }")),
+                bases(Map.of(
+                        "Item.json", "{ \"Skills\": [] }",
+                        "Template.json", "{ \"Skills\": [ { \"Id\": \"Strike\", \"Cooldown\": 5 } ] }")),
+                index(Map.of("Template", "Template.json")));
+
+        JsonObject added = out.outputs().get("Item.json")
+                .getAsJsonArray("Skills").get(0).getAsJsonObject();
+        assertFalse(added.has("Cooldown"));
+        assertFalse(added.has("$Import"));
+    }
+
+    @Test
+    void unregisteredDollarKeysAreStillStrippedFromArrayElements() {
+        CompileResult out = compile(
+                List.of(source("a.patch", 0, "Item.json", PATCH,
+                        "{ \"Skills+\": [ { \"$Comment\": \"note\", \"Id\": \"Strike\" } ] }")),
+                bases(Map.of("Item.json", "{ \"Skills\": [] }")),
+                index(Map.of()));
+
+        JsonObject added = out.outputs().get("Item.json")
+                .getAsJsonArray("Skills").get(0).getAsJsonObject();
+        assertEquals("Strike", added.get("Id").getAsString());
+        assertFalse(added.has("$Comment"));
     }
 }

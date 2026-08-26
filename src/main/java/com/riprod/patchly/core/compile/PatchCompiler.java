@@ -75,11 +75,13 @@ public final class PatchCompiler {
 
         Map<String, List<JsonObject>> putsByTarget = new HashMap<>();
         Map<String, JsonObject> seeds = new HashMap<>();
+        Map<String, String> seedPath = new HashMap<>();
         for (Ordered o : ordered) {
             if (o.source.kind().basePolicy() != BasePolicy.OPTIONAL) continue;
             putsByTarget.computeIfAbsent(o.source.targetRelative(), k -> new ArrayList<>())
                     .add(o.source.patchJson());
-            seeds.computeIfAbsent(o.source.targetRelative(), k -> o.source.kind().seedWhenAbsent());
+            seeds.computeIfAbsent(o.source.identity(), k -> o.source.kind().seedWhenAbsent());
+            seedPath.putIfAbsent(o.source.identity(), o.source.targetRelative());
         }
 
         List<Ordered> merges = withScopeContributions(ordered, scopes);
@@ -88,8 +90,9 @@ public final class PatchCompiler {
         ImportResolverImpl imports = new ImportResolverImpl(assetIndex, baseResolver, putsByTarget, effective, ctx, unresolved);
         Set<String> markers = effective.directives().markerKeys();
 
-        Map<String, JsonObject> outputs = new LinkedHashMap<>();
-        Map<Path, String> sourceToTarget = new LinkedHashMap<>();
+        Map<String, JsonObject> merged = new LinkedHashMap<>();
+        Map<String, String> writePath = new LinkedHashMap<>();
+        Map<Path, String> sourceToIdentity = new LinkedHashMap<>();
         Map<String, List<CompileResult.Contribution>> contributions = new LinkedHashMap<>();
         List<CompileResult.MissingBase> missing = new ArrayList<>();
 
@@ -98,31 +101,49 @@ public final class PatchCompiler {
             BasePolicy policy = s.kind().basePolicy();
             if (policy == BasePolicy.ENVIRONMENT) continue;
             String target = s.targetRelative();
+            String identity = s.identity();
 
-            JsonObject accumulator = outputs.get(target);
+            JsonObject accumulator = merged.get(identity);
             if (accumulator == null) {
-                JsonObject base = baseResolver.resolveBase(target);
-                if (base == null) {
-                    if (policy == BasePolicy.REQUIRED) {
-                        missing.add(new CompileResult.MissingBase(s.id(), target));
+                BaseResolver.ResolvedBase base = baseResolver.resolveBase(target);
+                if (base != null) {
+                    accumulator = base.json();
+                    writePath.putIfAbsent(identity, base.path());
+                } else {
+                    accumulator = seeds.get(identity);
+                    if (accumulator == null) {
+                        if (policy == BasePolicy.REQUIRED) {
+                            missing.add(new CompileResult.MissingBase(s.id(), target));
+                        }
                         continue;
                     }
-                    base = policy == BasePolicy.SCOPE ? seeds.get(target) : s.kind().seedWhenAbsent();
-                    if (base == null) continue;
+                    writePath.putIfAbsent(identity, seedPath.get(identity));
                 }
-                accumulator = base;
             }
 
-            JsonObject merged = JsonDeepMerge.merge(accumulator, s.patchJson(), effective, ctx, imports, target);
-            JsonDeepMerge.stripMergeKey(merged);
-            MetaKeys.stripMarkersDeep(merged, markers);
-            outputs.put(target, merged);
-            if (policy != BasePolicy.SCOPE) sourceToTarget.put(s.id(), target);
-            contributions.computeIfAbsent(target, k -> new ArrayList<>())
+            JsonObject next = JsonDeepMerge.merge(accumulator, s.patchJson(), effective, ctx, imports, target);
+            JsonDeepMerge.stripMergeKey(next);
+            MetaKeys.stripMarkersDeep(next, markers);
+            merged.put(identity, next);
+            if (policy != BasePolicy.SCOPE) sourceToIdentity.put(s.id(), identity);
+            contributions.computeIfAbsent(identity, k -> new ArrayList<>())
                     .add(new CompileResult.Contribution(s.id(), s.kind().extension(), o.priority));
         }
 
-        return new CompileResult(outputs, sourceToTarget, missing, unresolved, expressions, gated, contributions);
+        Map<String, JsonObject> outputs = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonObject> e : merged.entrySet()) {
+            outputs.put(writePath.get(e.getKey()), e.getValue());
+        }
+        Map<Path, String> sourceToTarget = new LinkedHashMap<>();
+        for (Map.Entry<Path, String> e : sourceToIdentity.entrySet()) {
+            sourceToTarget.put(e.getKey(), writePath.get(e.getValue()));
+        }
+        Map<String, List<CompileResult.Contribution>> byWritePath = new LinkedHashMap<>();
+        for (Map.Entry<String, List<CompileResult.Contribution>> e : contributions.entrySet()) {
+            byWritePath.put(writePath.get(e.getKey()), e.getValue());
+        }
+
+        return new CompileResult(outputs, sourceToTarget, missing, unresolved, expressions, gated, byWritePath);
     }
 
     @Nonnull
@@ -165,20 +186,23 @@ public final class PatchCompiler {
             @Nonnull List<Scope> scopes) {
         if (scopes.isEmpty()) return ordered;
 
-        Map<String, Set<Scope>> byTarget = new LinkedHashMap<>();
+        Map<String, Set<Scope>> byIdentity = new LinkedHashMap<>();
+        Map<String, String> identityTarget = new LinkedHashMap<>();
         for (Ordered o : ordered) {
             BasePolicy policy = o.source.kind().basePolicy();
             if (policy == BasePolicy.ENVIRONMENT) continue;
-            Set<Scope> hits = byTarget.computeIfAbsent(o.source.targetRelative(), k -> new LinkedHashSet<>());
+            Set<Scope> hits = byIdentity.computeIfAbsent(o.source.identity(), k -> new LinkedHashSet<>());
+            identityTarget.putIfAbsent(o.source.identity(), o.source.targetRelative());
             for (Scope scope : scopes) {
                 if (!scope.blocking && scope.covers(o.source.id())) hits.add(scope);
             }
         }
 
         List<Ordered> contributions = new ArrayList<>();
-        for (Map.Entry<String, Set<Scope>> entry : byTarget.entrySet()) {
+        for (Map.Entry<String, Set<Scope>> entry : byIdentity.entrySet()) {
             for (Scope scope : entry.getValue()) {
-                contributions.add(new Ordered(scope.contributionTo(entry.getKey()), scope.priority));
+                contributions.add(new Ordered(
+                        scope.contributionTo(identityTarget.get(entry.getKey()), entry.getKey()), scope.priority));
             }
         }
         if (contributions.isEmpty()) return ordered;
@@ -216,7 +240,19 @@ public final class PatchCompiler {
 
     private static final Comparator<Ordered> ORDER =
             Comparator.comparingInt((Ordered o) -> o.priority)
-                    .thenComparingInt(o -> o.source.loadIndex());
+                    .thenComparingInt(o -> o.source.loadIndex())
+                    .thenComparingInt(o -> rank(o.source.kind().basePolicy()))
+                    .thenComparingInt(o -> o.source.id().getNameCount())
+                    .thenComparing(o -> o.source.id().toString());
+
+    private static int rank(@Nonnull BasePolicy policy) {
+        return switch (policy) {
+            case OPTIONAL -> 0;
+            case SCOPE -> 1;
+            case REQUIRED -> 2;
+            case ENVIRONMENT -> 3;
+        };
+    }
 
     private record Ordered(PatchSource source, int priority) {
     }
@@ -246,8 +282,9 @@ public final class PatchCompiler {
         }
 
         @Nonnull
-        private PatchSource contributionTo(@Nonnull String target) {
-            return new PatchSource(source.id(), source.loadIndex(), target, source.kind(), source.patchJson());
+        private PatchSource contributionTo(@Nonnull String target, @Nonnull String identity) {
+            return new PatchSource(source.id(), source.loadIndex(), target, identity,
+                    source.kind(), source.patchJson());
         }
     }
 }

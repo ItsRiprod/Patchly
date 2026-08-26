@@ -20,6 +20,8 @@ public final class MergeEngine implements MergeContext {
     private final ImportResolver importResolver;
     private final String fromTarget;
     private final List<String> path = new ArrayList<>();
+    private ElementDirective activeLocator;
+    private JsonObject activeElement;
 
     public MergeEngine(@Nonnull MergeTable table, @Nonnull PatchContext patchContext) {
         this(table, patchContext, null, "");
@@ -82,16 +84,39 @@ public final class MergeEngine implements MergeContext {
             if (baseEl.isJsonObject() && element.isJsonObject()) {
                 mergeObject(baseEl.getAsJsonObject(), element.getAsJsonObject());
             } else {
-                base.set(index, element.deepCopy());
+                base.set(index, resolved(element));
             }
         } else {
-            base.add(element.deepCopy());
+            base.add(resolved(element));
         }
+    }
+
+    @Nonnull
+    private JsonElement resolved(@Nonnull JsonElement element) {
+        if (!element.isJsonObject()) return element.deepCopy();
+        JsonObject out = new JsonObject();
+        mergeObject(out, element.getAsJsonObject());
+        return out;
     }
 
     @Override
     public void runArrayMerge(@Nonnull JsonObject target, @Nonnull String baseKey,
                               @Nonnull JsonArray patchArray, @Nonnull MergeOperator operator) {
+        withArrayKey(baseKey, () -> runElements(target, baseKey, patchArray, operator));
+    }
+
+    @Override
+    public void withArrayKey(@Nonnull String baseKey, @Nonnull Runnable body) {
+        path.add(baseKey);
+        try {
+            body.run();
+        } finally {
+            path.remove(path.size() - 1);
+        }
+    }
+
+    private void runElements(@Nonnull JsonObject target, @Nonnull String baseKey,
+                             @Nonnull JsonArray patchArray, @Nonnull MergeOperator operator) {
         JsonElement existing = target.get(baseKey);
         JsonArray base = (existing != null && existing.isJsonArray())
                 ? existing.getAsJsonArray()
@@ -106,7 +131,7 @@ public final class MergeEngine implements MergeContext {
 
             LocatorPlan plan = resolveLocator(patchEl, base);
             if (plan != null) {
-                MetaKeys.strip(plan.cleanPayload());
+                stripElementMeta(plan.cleanPayload());
                 if (plan.matched()) {
                     operator.onLocatorHit(base, plan.targetIndices(), plan.cleanPayload(), this);
                 } else {
@@ -114,7 +139,7 @@ public final class MergeEngine implements MergeContext {
                 }
             } else if (patchEl.isJsonObject()) {
                 JsonObject stripped = patchEl.getAsJsonObject().deepCopy();
-                MetaKeys.strip(stripped);
+                stripElementMeta(stripped);
                 operator.onPlainElement(base, i, stripped, this);
             } else {
                 operator.onPlainElement(base, i, patchEl, this);
@@ -147,8 +172,25 @@ public final class MergeEngine implements MergeContext {
             }
             found = d;
         }
+        activeLocator = found;
+        activeElement = found == null ? null : obj;
         if (found == null) return null;
         return found.locate(obj, base);
+    }
+
+    @Nullable
+    @Override
+    public JsonObject selectImportedElement(@Nonnull JsonArray candidates) {
+        if (activeLocator == null || activeElement == null) return null;
+        LocatorPlan plan = activeLocator.locate(activeElement, candidates);
+        if (!plan.matched()) return null;
+        JsonElement picked = candidates.get(plan.targetIndices().get(0));
+        return picked.isJsonObject() ? picked.getAsJsonObject() : null;
+    }
+
+    @Override
+    public void stripElementMeta(@Nonnull JsonObject element) {
+        MetaKeys.strip(element, table.directives().objectMarkerKeys());
     }
 
     @Override

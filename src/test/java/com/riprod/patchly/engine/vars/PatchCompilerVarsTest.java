@@ -53,7 +53,7 @@ class PatchCompilerVarsTest {
                 src("Globals.vars", 0, "Globals.vars", VARS, "{ \"Mana\": 40, \"Head\": 0.25 }"),
                 src("Armor_Adamantite_Head.patch", 1, "Armor_Adamantite_Head.json", PATCH,
                         "{ \"Mana?\": [ { \"Amount#\": \"$Mana * $Head\", \"CalculationType\": \"Additive\" } ] }"));
-        BaseResolver bases = t -> parse("{}");
+        BaseResolver bases = t -> new BaseResolver.ResolvedBase(t, parse("{}"));
         CompileResult out = new PatchCompiler().compile(sources, bases, ALL, TABLE);
 
         assertTrue(out.unresolvedExpressions().isEmpty());
@@ -69,7 +69,7 @@ class PatchCompilerVarsTest {
         List<PatchSource> sources = List.of(
                 src("Globals.vars", 0, "Globals.vars", VARS, "{ \"Mana\": 40 }"),
                 src("X.patch", 1, "X.json", PATCH, "{ \"Amount#\": \"$Nope\" }"));
-        CompileResult out = new PatchCompiler().compile(sources, t -> parse("{}"), ALL, TABLE);
+        CompileResult out = new PatchCompiler().compile(sources, t -> new BaseResolver.ResolvedBase(t, parse("{}")), ALL, TABLE);
         assertEquals(1, out.unresolvedExpressions().size());
         assertTrue(out.outputs().get("X.json").has("Amount#"));
     }

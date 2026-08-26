@@ -23,11 +23,11 @@ public final class MonitorInstaller {
         this.listener = listener;
     }
 
-    public void install() {
+    public boolean install() {
         AssetMonitor monitor = AssetModule.get().getAssetMonitor();
         if (monitor == null) {
             LOGGER.at(Level.INFO).log("[patcher] AssetMonitor unavailable; no hot-reload");
-            return;
+            return false;
         }
         int installed = 0;
         int skipped = 0;
@@ -48,6 +48,7 @@ public final class MonitorInstaller {
         LOGGER.at(Level.INFO).log(
                 "[patcher] watching source files in %d folder pack(s); skipped %d jar/zip pack(s)",
                 installed, skipped);
+        return true;
     }
 
     private static boolean isFolderPack(@Nonnull Path root) {

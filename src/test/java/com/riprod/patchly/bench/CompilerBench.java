@@ -76,7 +76,8 @@ public class CompilerBench {
                         Path.of("p" + (load++) + ".patch"), load, target, PATCH, p));
             }
         }
-        baseResolver = bases::get;
+        baseResolver = t -> bases.containsKey(t)
+                ? new BaseResolver.ResolvedBase(t, bases.get(t)) : null;
     }
 
     private static JsonObject baseItem(int t) {

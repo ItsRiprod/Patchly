@@ -8,5 +8,8 @@ import javax.annotation.Nullable;
 @FunctionalInterface
 public interface BaseResolver {
     @Nullable
-    JsonObject resolveBase(@Nonnull String targetRelative);
+    ResolvedBase resolveBase(@Nonnull String targetRelative);
+
+    record ResolvedBase(@Nonnull String path, @Nonnull JsonObject json) {
+    }
 }

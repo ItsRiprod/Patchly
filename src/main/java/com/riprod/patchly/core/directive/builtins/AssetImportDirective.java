@@ -33,17 +33,23 @@ public final class AssetImportDirective implements ObjectDirective {
         if (!ref.isJsonPrimitive() || !ref.getAsJsonPrimitive().isString()) return;
         JsonObject asset = ctx.resolveImport(ref.getAsString());
         if (asset == null) return;
-        JsonObject scoped = scopeTo(asset, path);
+        JsonObject scoped = scopeTo(asset, path, ctx);
         if (scoped != null) ctx.mergeObject(target, scoped);
     }
 
     @Nullable
-    private static JsonObject scopeTo(@Nonnull JsonObject asset, @Nonnull List<String> path) {
+    private static JsonObject scopeTo(@Nonnull JsonObject asset, @Nonnull List<String> path,
+            @Nonnull MergeContext ctx) {
         JsonObject cur = asset;
-        for (String key : path) {
-            JsonElement next = cur.get(key);
-            if (next == null || !next.isJsonObject()) return null;
-            cur = next.getAsJsonObject();
+        for (int i = 0; i < path.size(); i++) {
+            JsonElement next = cur.get(path.get(i));
+            if (next == null) return null;
+            if (next.isJsonObject()) {
+                cur = next.getAsJsonObject();
+                continue;
+            }
+            if (!next.isJsonArray() || i != path.size() - 1) return null;
+            return ctx.selectImportedElement(next.getAsJsonArray());
         }
         return cur;
     }

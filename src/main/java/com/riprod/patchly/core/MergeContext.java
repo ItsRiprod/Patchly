@@ -26,8 +26,15 @@ public interface MergeContext {
 
     boolean hasLocatorMarker(@Nonnull JsonElement element);
 
+    void stripElementMeta(@Nonnull JsonObject element);
+
+    void withArrayKey(@Nonnull String baseKey, @Nonnull Runnable body);
+
     boolean isGatedOut(@Nonnull JsonObject patchObject);
 
     @Nullable
     JsonObject resolveImport(@Nonnull String ref);
+
+    @Nullable
+    JsonObject selectImportedElement(@Nonnull JsonArray candidates);
 }

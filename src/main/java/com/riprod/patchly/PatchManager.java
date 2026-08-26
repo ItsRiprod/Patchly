@@ -21,6 +21,7 @@ import com.hypixel.hytale.server.core.plugin.PluginBase;
 import com.hypixel.hytale.server.core.plugin.PluginManager;
 import com.riprod.patchly.command.PatchlyCommand;
 import com.riprod.patchly.core.JsonDeepMerge;
+import com.riprod.patchly.core.compile.BaseResolver;
 import com.riprod.patchly.core.compile.CompileResult;
 import com.riprod.patchly.core.compile.PatchCompiler;
 import com.riprod.patchly.core.compile.PatchSource;
@@ -204,8 +205,7 @@ public final class PatchManager implements PatchChangeListener {
         }
 
         if (!monitorInstalled) {
-            monitorInstaller.install();
-            monitorInstalled = true;
+            monitorInstalled = monitorInstaller.install();
         }
         LOGGER.at(Level.INFO).log(
                 "[patcher] %d patch output(s); %d file(s) changed and %s (%s)",
@@ -278,7 +278,7 @@ public final class PatchManager implements PatchChangeListener {
                 // loadIndex is a position in getAssetPacks() that shifts on register/unregister;
                 // re-stamp against the pack current index, copy the record only when it moved
                 out.add(s.loadIndex() == i ? s
-                        : new PatchSource(s.id(), i, s.targetRelative(), s.kind(), s.patchJson()));
+                        : new PatchSource(s.id(), i, s.targetRelative(), s.identity(), s.kind(), s.patchJson()));
             }
         }
         LOGGER.atFine().log("[patcher] discovered %d source(s) (%d pack(s) walked, %d cached)",
@@ -303,9 +303,10 @@ public final class PatchManager implements PatchChangeListener {
                             String relSource = PathUtil.normalizeRelative(root, file);
                             String stem = PathUtil.stripSuffix(relSource, kind.extension());
                             if (stem == null) return FileVisitResult.CONTINUE;
-                            String target = kind.basePolicy() == BasePolicy.SCOPE
-                                    ? "" : PathUtil.recoverTargetExtension(stem);
-                            out.add(new PatchSource(file, packIndex, target, kind, json));
+                            boolean scope = kind.basePolicy() == BasePolicy.SCOPE;
+                            String target = scope ? "" : PathUtil.recoverTargetExtension(stem);
+                            String identity = scope ? "" : AssetTypeIndex.identityOf(target);
+                            out.add(new PatchSource(file, packIndex, target, identity, kind, json));
                             return FileVisitResult.CONTINUE;
                         }
                     });
@@ -316,10 +317,14 @@ public final class PatchManager implements PatchChangeListener {
     }
 
     @Nullable
-    private JsonObject resolveBaseJson(@Nonnull String relativeTarget) {
+    private BaseResolver.ResolvedBase resolveBaseJson(@Nonnull String relativeTarget) {
         AssetTypeIndex locator = this.assetLocator;
         Path base = locator == null ? null : locator.upstreamBasePath(relativeTarget);
-        return base == null ? null : readJson(base);
+        if (base == null) return null;
+        JsonObject json = readJson(base);
+        if (json == null) return null;
+        String path = AssetTypeIndex.serverRelative(base);
+        return new BaseResolver.ResolvedBase(path == null ? relativeTarget : path, json);
     }
 
     @Nonnull
@@ -409,12 +414,12 @@ public final class PatchManager implements PatchChangeListener {
     }
 
     private void restoreOrDrop(@Nonnull String target) {
-        JsonObject base = resolveBaseJson(target);
+        BaseResolver.ResolvedBase base = resolveBaseJson(target);
         if (base == null) {
             store.deleteOverride(target);
             return;
         }
-        store.writeIfChanged(target, base);
+        store.writeIfChanged(target, base.json());
     }
 
     @Override

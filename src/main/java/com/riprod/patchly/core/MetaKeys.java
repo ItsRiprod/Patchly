@@ -16,6 +16,10 @@ public final class MetaKeys {
         obj.entrySet().removeIf(e -> e.getKey().startsWith(PREFIX));
     }
 
+    public static void strip(@Nonnull JsonObject obj, @Nonnull Collection<String> keep) {
+        obj.entrySet().removeIf(e -> e.getKey().startsWith(PREFIX) && !keep.contains(e.getKey()));
+    }
+
     public static void stripMarkersDeep(@Nonnull JsonElement node, @Nonnull Collection<String> markers) {
         if (node.isJsonObject()) {
             JsonObject obj = node.getAsJsonObject();

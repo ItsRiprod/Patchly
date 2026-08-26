@@ -33,32 +33,7 @@ public abstract class ArrayAddOperator implements MergeOperator {
 
         int boundary = base.size();
         JsonArray additions = new JsonArray();
-        for (int i = 0; i < patchArray.size(); i++) {
-            JsonElement patchEl = patchArray.get(i);
-            if (patchEl.isJsonObject() && ctx.isGatedOut(patchEl.getAsJsonObject())) continue;
-
-            JsonElement candidate;
-            LocatorPlan plan = ctx.resolveLocator(patchEl, base);
-            if (plan != null) {
-                MetaKeys.strip(plan.cleanPayload());
-                if (plan.matched()) {
-                    onLocatorHit(base, plan.targetIndices(), plan.cleanPayload(), ctx);
-                    continue;
-                }
-                candidate = plan.cleanPayload();
-            } else if (patchEl.isJsonObject()) {
-                JsonObject stripped = patchEl.getAsJsonObject().deepCopy();
-                MetaKeys.strip(stripped);
-                JsonObject merged = new JsonObject();
-                ctx.mergeObject(merged, stripped);
-                candidate = merged;
-            } else {
-                candidate = patchEl.deepCopy();
-            }
-
-            if (dedupe() && containsEqual(base, boundary, candidate)) continue;
-            additions.add(candidate);
-        }
+        ctx.withArrayKey(baseKey, () -> collect(patchArray, base, boundary, additions, ctx));
 
         if (front()) {
             JsonArray result = new JsonArray();
@@ -68,6 +43,38 @@ public abstract class ArrayAddOperator implements MergeOperator {
         } else {
             base.addAll(additions);
             target.add(baseKey, base);
+        }
+    }
+
+    private void collect(@Nonnull JsonArray patchArray, @Nonnull JsonArray base, int boundary,
+                         @Nonnull JsonArray additions, @Nonnull MergeContext ctx) {
+        for (int i = 0; i < patchArray.size(); i++) {
+            JsonElement patchEl = patchArray.get(i);
+            if (patchEl.isJsonObject() && ctx.isGatedOut(patchEl.getAsJsonObject())) continue;
+
+            JsonElement candidate;
+            LocatorPlan plan = ctx.resolveLocator(patchEl, base);
+            if (plan != null) {
+                ctx.stripElementMeta(plan.cleanPayload());
+                if (plan.matched()) {
+                    onLocatorHit(base, plan.targetIndices(), plan.cleanPayload(), ctx);
+                    continue;
+                }
+                JsonObject seeded = new JsonObject();
+                ctx.mergeObject(seeded, plan.cleanPayload());
+                candidate = seeded;
+            } else if (patchEl.isJsonObject()) {
+                JsonObject stripped = patchEl.getAsJsonObject().deepCopy();
+                ctx.stripElementMeta(stripped);
+                JsonObject merged = new JsonObject();
+                ctx.mergeObject(merged, stripped);
+                candidate = merged;
+            } else {
+                candidate = patchEl.deepCopy();
+            }
+
+            if (dedupe() && containsEqual(base, boundary, candidate)) continue;
+            additions.add(candidate);
         }
     }
 

@@ -15,13 +15,22 @@ public final class DirectiveTable {
     private final Map<String, ElementDirective> elementMarkers = new HashMap<>();
     private final List<RootDirective> rootDirectives = new ArrayList<>();
     private final List<ObjectDirective> objectDirectives = new ArrayList<>();
+    private final Set<String> objectMarkers = new HashSet<>();
 
     public DirectiveTable(@Nonnull Collection<Directive> all) {
         for (Directive d : all) {
             if (d instanceof ElementDirective e) elementMarkers.put(e.markerKey(), e);
             if (d instanceof RootDirective r) rootDirectives.add(r);
-            if (d instanceof ObjectDirective o) objectDirectives.add(o);
+            if (d instanceof ObjectDirective o) {
+                objectDirectives.add(o);
+                objectMarkers.add(o.markerKey());
+            }
         }
+    }
+
+    @Nonnull
+    public Set<String> objectMarkerKeys() {
+        return Collections.unmodifiableSet(objectMarkers);
     }
 
     @Nullable

@@ -33,6 +33,14 @@ final class AssetTypeIndex implements AssetIndex {
         return existing != null ? existing : pendingPutTarget(store, ref);
     }
 
+    @Nonnull
+    static String identityOf(@Nonnull String target) {
+        AssetStore<?, ?, ?> store = storeFor(target);
+        if (store == null) return target;
+        String ext = store.getExtension();
+        return store.getPath() + "|" + idOf(target, ext) + ext;
+    }
+
     @Nullable
     Path upstreamBasePath(@Nonnull String target) {
         AssetStore<?, ?, ?> store = storeFor(target);
@@ -114,7 +122,7 @@ final class AssetTypeIndex implements AssetIndex {
     }
 
     @Nullable
-    private static String serverRelative(@Nonnull Path p) {
+    static String serverRelative(@Nonnull Path p) {
         for (int i = p.getNameCount() - 1; i >= 0; i--) {
             if (p.getName(i).toString().equals("Server")) {
                 return p.subpath(i, p.getNameCount()).toString().replace('\\', '/');

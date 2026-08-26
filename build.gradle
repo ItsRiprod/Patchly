@@ -112,7 +112,7 @@ hytalePublisher {
             pom.licenses {
                 license {
                     name = project.mod_license.toString()
-                    url  = "https://www.gnu.org/licenses/gpl-3.0.html"
+                    url  = "https://opensource.org/license/mit"
                 }
             }
             pom.developers {

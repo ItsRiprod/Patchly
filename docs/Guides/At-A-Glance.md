@@ -110,7 +110,7 @@ When several assets share a chunk of configuration, define it once and `$Import`
 The reference is an asset **id**, resolved only against assets of the **same type** as the file you are patching, so an item never imports a block that happens to share the id. Use a value containing `/` to point at an exact asset path. An import sees the target's base plus any `.put` that creates it (never other packs' `.patch`), so a template you ship as a `.put` can be `$Import`ed everywhere. Use `"$Import": [ "A", "B" ]` to layer several (later wins); a missing import is skipped with a log line.
 > **Nesting.** A `$Import` inside a child object contributes only that asset's matching sub-tree (an `$Import` inside `Interactions` brings in only the imported asset's `Interactions`).
 
-> **Arrays** Having `$Import` in an array will only work if you also have `$Match` present. It will import from the parent an array element that matches the Id of the Match into that element of the array
+> **Arrays.** `$Import` inside an array element needs a `$Match` alongside it. It looks up the same array in the imported asset, finds the element whose `$Match` field equals yours, and layers that in before your own keys. This works whether the element already exists in the base array or is being appended by `+`, so a new entry can pull the template too. If the imported asset has no matching element, nothing is imported and your own keys still apply. Without `$Match` there is nothing to select by, so the import is skipped.
 
 
 ## Cross-mod patches with `$Requires`

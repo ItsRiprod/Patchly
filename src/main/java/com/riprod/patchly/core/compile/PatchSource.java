@@ -7,5 +7,10 @@ import javax.annotation.Nonnull;
 import java.nio.file.Path;
 
 public record PatchSource(@Nonnull Path id, int loadIndex, @Nonnull String targetRelative,
-        @Nonnull SourceKind kind, @Nonnull JsonObject patchJson) {
+        @Nonnull String identity, @Nonnull SourceKind kind, @Nonnull JsonObject patchJson) {
+
+    public PatchSource(@Nonnull Path id, int loadIndex, @Nonnull String targetRelative,
+            @Nonnull SourceKind kind, @Nonnull JsonObject patchJson) {
+        this(id, loadIndex, targetRelative, targetRelative, kind, patchJson);
+    }
 }
