@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'com.azuredoom.hytale-tools' version '1.0.48'
+    id 'com.azuredoom.hytale-tools' version '1.+'
     id 'com.azuredoom.hytalepublisher' version '1.+'
 }
 

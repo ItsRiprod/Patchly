@@ -9,7 +9,7 @@
         }
     ],
     "Website": "https://modtale.net/mod/patchly",
-    "ServerVersion": ">=0.5.0 <0.7.0",
+    "ServerVersion": ">=0.6.0 <0.7.0",
     "Dependencies": {
         
     },
