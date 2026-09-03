@@ -6,11 +6,6 @@ draft: false
 ---
 # Turn Content On And Off With Flags
 
-A pack often ships content that should only apply under some condition the pack author controls:
-an experimental rework, a hard-mode variant, a set of patches that only make sense once a server
-opts in. `$Requires` already gates on other packs. Combined with `.vars`, it also gates on values
-you define, so one line in `Globals.vars` switches a whole feature on or off, and another mod can
-flip it by shipping its own `Globals.vars`.
 
 ## Goal
 
