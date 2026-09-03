@@ -7,6 +7,7 @@ import com.riprod.patchly.core.MergeTable;
 import com.riprod.patchly.core.MetaKeys;
 import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.core.directive.RootDirective;
+import com.riprod.patchly.core.directive.builtins.RequiresDirective;
 import com.riprod.patchly.core.vars.ComputeOperator;
 import com.riprod.patchly.core.vars.VarEnv;
 import com.riprod.patchly.core.vars.VarEnvBuilder;
@@ -25,6 +26,8 @@ import java.util.Map;
 import java.util.Set;
 
 public final class PatchCompiler {
+    private static final RequiresDirective REQUIRES = new RequiresDirective();
+
     @Nonnull
     public CompileResult compile(@Nonnull List<PatchSource> sources,
             @Nonnull BaseResolver baseResolver,
@@ -40,37 +43,43 @@ public final class PatchCompiler {
             @Nonnull MergeTable table,
             @Nullable AssetIndex assetIndex) {
         List<RootDirective> roots = table.directives().rootDirectives();
-
         List<CompileResult.GatedSource> gated = new ArrayList<>();
-        List<Scope> scopes = resolveScopes(sources, roots, ctx, gated);
+        List<CompileResult.UnresolvedExpression> expressions = new ArrayList<>();
 
-        List<Ordered> ordered = new ArrayList<>(sources.size());
+        List<PatchSource> globalVars = new ArrayList<>();
+        List<PatchSource> scopedVars = new ArrayList<>();
+        List<PatchSource> rest = new ArrayList<>(sources.size());
         for (PatchSource s : sources) {
+            if (s.kind().basePolicy() != BasePolicy.ENVIRONMENT) rest.add(s);
+            else if (VarEnvBuilder.isGlobals(s)) globalVars.add(s);
+            else scopedVars.add(s);
+        }
+
+        Map<String, Double> globals = VarEnvBuilder.buildGlobals(
+                sourcesOf(gateAll(globalVars, roots, ctx, gated, expressions)), expressions);
+        PatchContext ctxGlobals = PatchContext.withVars(ctx, new VarEnv(globals, Map.of()).lookup());
+        VarEnv env = new VarEnv(globals, VarEnvBuilder.buildScopes(globals,
+                sourcesOf(gateAll(scopedVars, roots, ctxGlobals, gated, expressions)), expressions));
+        PatchContext ctxFull = PatchContext.withVars(ctx, env.lookup());
+
+        List<Scope> scopes = resolveScopes(rest, roots, ctxFull, gated, expressions);
+
+        List<Ordered> ordered = new ArrayList<>(rest.size());
+        for (PatchSource s : rest) {
             if (s.kind().basePolicy() == BasePolicy.SCOPE) continue;
 
-            Scope blocking = s.kind().basePolicy() == BasePolicy.ENVIRONMENT ? null : blockingScope(scopes, s);
+            Scope blocking = blockingScope(scopes, s);
             if (blocking != null) {
                 gated.add(new CompileResult.GatedSource(s.id(), s.targetRelative(),
                         blocking.directive, blocking.condition, blocking.source.id()));
                 continue;
             }
 
-            Gate gate = evaluate(s.patchJson(), roots, ctx);
-            if (!gate.keep) {
-                gated.add(new CompileResult.GatedSource(
-                        s.id(), s.targetRelative(), gate.directive, gate.condition));
-                continue;
-            }
-            ordered.add(new Ordered(s, gate.order));
+            Ordered kept = gateOne(s, roots, ctxFull, gated, expressions);
+            if (kept != null) ordered.add(kept);
         }
         ordered.sort(ORDER);
 
-        List<CompileResult.UnresolvedExpression> expressions = new ArrayList<>();
-        List<PatchSource> envSources = new ArrayList<>();
-        for (Ordered o : ordered) {
-            if (o.source.kind().basePolicy() == BasePolicy.ENVIRONMENT) envSources.add(o.source);
-        }
-        VarEnv env = VarEnvBuilder.build(envSources, expressions);
         MergeTable effective = table.with(new ComputeOperator(env, expressions));
 
         Map<String, List<JsonObject>> putsByTarget = new HashMap<>();
@@ -87,7 +96,7 @@ public final class PatchCompiler {
         List<Ordered> merges = withScopeContributions(ordered, scopes);
 
         List<CompileResult.UnresolvedImport> unresolved = new ArrayList<>();
-        ImportResolverImpl imports = new ImportResolverImpl(assetIndex, baseResolver, putsByTarget, effective, ctx, unresolved);
+        ImportResolverImpl imports = new ImportResolverImpl(assetIndex, baseResolver, putsByTarget, effective, ctxFull, unresolved);
         Set<String> markers = effective.directives().markerKeys();
 
         Map<String, JsonObject> merged = new LinkedHashMap<>();
@@ -121,7 +130,12 @@ public final class PatchCompiler {
                 }
             }
 
-            JsonObject next = JsonDeepMerge.merge(accumulator, s.patchJson(), effective, ctx, imports, target);
+            int before = expressions.size();
+            JsonObject next = JsonDeepMerge.merge(accumulator, s.patchJson(), effective, ctxFull, imports, target);
+            String output = writePath.get(identity);
+            for (int i = before; i < expressions.size(); i++) {
+                expressions.set(i, expressions.get(i).withTarget(output));
+            }
             JsonDeepMerge.stripMergeKey(next);
             MetaKeys.stripMarkersDeep(next, markers);
             merged.put(identity, next);
@@ -143,14 +157,64 @@ public final class PatchCompiler {
             byWritePath.put(writePath.get(e.getKey()), e.getValue());
         }
 
-        return new CompileResult(outputs, sourceToTarget, missing, unresolved, expressions, gated, byWritePath);
+        return new CompileResult(outputs, sourceToTarget, missing, unresolved, expressions, gated, byWritePath,
+                env.asMap());
+    }
+
+    @Nonnull
+    private static List<Ordered> gateAll(@Nonnull List<PatchSource> sources,
+            @Nonnull List<RootDirective> roots,
+            @Nonnull PatchContext ctx,
+            @Nonnull List<CompileResult.GatedSource> gated,
+            @Nonnull List<CompileResult.UnresolvedExpression> expressions) {
+        List<Ordered> kept = new ArrayList<>(sources.size());
+        for (PatchSource s : sources) {
+            Ordered o = gateOne(s, roots, ctx, gated, expressions);
+            if (o != null) kept.add(o);
+        }
+        kept.sort(ORDER);
+        return kept;
+    }
+
+    @Nullable
+    private static Ordered gateOne(@Nonnull PatchSource s,
+            @Nonnull List<RootDirective> roots,
+            @Nonnull PatchContext ctx,
+            @Nonnull List<CompileResult.GatedSource> gated,
+            @Nonnull List<CompileResult.UnresolvedExpression> expressions) {
+        Gate gate = evaluate(s.patchJson(), roots, ctx);
+        if (gate.keep) return new Ordered(s, gate.order);
+        gated.add(new CompileResult.GatedSource(s.id(), s.targetRelative(), gate.directive, gate.condition));
+        diagnoseGate(s, gate, ctx, expressions);
+        return null;
+    }
+
+    private static void diagnoseGate(@Nonnull PatchSource s, @Nonnull Gate gate, @Nonnull PatchContext ctx,
+            @Nonnull List<CompileResult.UnresolvedExpression> expressions) {
+        if (!gate.directive.equals(REQUIRES.markerKey())) return;
+        JsonElement value = s.patchJson().get(gate.directive);
+        if (value == null) return;
+        String where = s.id().toString();
+        String target = s.kind().basePolicy() == BasePolicy.ENVIRONMENT ? where : s.targetRelative();
+        for (RequiresDirective.Diagnostic d : RequiresDirective.diagnose(value, ctx)) {
+            expressions.add(new CompileResult.UnresolvedExpression(
+                    where, d.literal(), d.reason(), target, d.missingScope()));
+        }
+    }
+
+    @Nonnull
+    private static List<PatchSource> sourcesOf(@Nonnull List<Ordered> ordered) {
+        List<PatchSource> out = new ArrayList<>(ordered.size());
+        for (Ordered o : ordered) out.add(o.source);
+        return out;
     }
 
     @Nonnull
     private static List<Scope> resolveScopes(@Nonnull List<PatchSource> sources,
             @Nonnull List<RootDirective> roots,
             @Nonnull PatchContext ctx,
-            @Nonnull List<CompileResult.GatedSource> gated) {
+            @Nonnull List<CompileResult.GatedSource> gated,
+            @Nonnull List<CompileResult.UnresolvedExpression> expressions) {
         List<PatchSource> declared = new ArrayList<>();
         for (PatchSource s : sources) {
             if (s.kind().basePolicy() == BasePolicy.SCOPE) declared.add(s);
@@ -174,6 +238,7 @@ public final class PatchCompiler {
             } else {
                 gated.add(new CompileResult.GatedSource(
                         s.id(), s.targetRelative(), gate.directive, gate.condition));
+                diagnoseGate(s, gate, ctx, expressions);
                 blocked.add(new Scope(s, gate.directive, gate.condition, gate.order, true));
             }
         }

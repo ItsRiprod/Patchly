@@ -19,6 +19,7 @@ import com.hypixel.hytale.server.core.event.events.ShutdownEvent;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.PluginBase;
 import com.hypixel.hytale.server.core.plugin.PluginManager;
+import com.riprod.patchly.api.PatchlyVarBridge;
 import com.riprod.patchly.command.PatchlyCommand;
 import com.riprod.patchly.core.JsonDeepMerge;
 import com.riprod.patchly.core.compile.BaseResolver;
@@ -51,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,6 +77,7 @@ public final class PatchManager implements PatchChangeListener {
     private final AtomicBoolean watchEnabled = new AtomicBoolean(true);
     private volatile boolean monitorInstalled = false;
     private volatile CompileResult lastResult;
+    private Set<String> reportedDiagnostics = Set.of();
     private AssetTypeIndex assetLocator;
 
     private static final int LOOP_BREAKER_THRESHOLD = 10;
@@ -96,7 +99,10 @@ public final class PatchManager implements PatchChangeListener {
     }
 
     public void install() {
-        if (!election.claim()) return;
+        if (!election.claim()) {
+            if (election.isLegacyDeferred()) PatchlyVarBridge.completeEmptyIfLegacy();
+            return;
+        }
         store.wipe();
         plugin.getCommandRegistry().registerCommand(new PatchlyCommand(this));
         plugin.getEventRegistry().register(EventPriority.LAST, LoadAssetEvent.class,
@@ -139,6 +145,12 @@ public final class PatchManager implements PatchChangeListener {
     @Nullable
     public CompileResult getLastResult() {
         return lastResult;
+    }
+
+    @Nonnull
+    public Map<String, Map<String, Double>> getVars() {
+        CompileResult result = lastResult;
+        return result == null ? Map.of() : result.vars();
     }
 
     @Nonnull
@@ -227,18 +239,25 @@ public final class PatchManager implements PatchChangeListener {
         CompileResult result = new PatchCompiler().compile(
                 sources, this::resolveBaseJson, buildPatchContext(), JsonDeepMerge.activeTable(), assetLocator);
 
+        Set<String> diagnostics = new LinkedHashSet<>();
         for (CompileResult.MissingBase mb : result.missingBases()) {
-            LOGGER.at(Level.WARNING).log(
-                    "[patcher] no base asset for patch %s (looking for %s)", mb.source(), mb.target());
+            diagnostics.add(String.format(
+                    "[patcher] no base asset for patch %s (looking for %s)", mb.source(), mb.target()));
         }
         for (CompileResult.UnresolvedImport ui : result.unresolvedImports()) {
-            LOGGER.at(Level.WARNING).log(
-                    "[patcher] unresolved $Import '%s' from %s", ui.ref(), ui.fromTarget());
+            diagnostics.add(String.format(
+                    "[patcher] unresolved $Import '%s' from %s", ui.ref(), ui.fromTarget()));
         }
         for (CompileResult.UnresolvedExpression ue : result.unresolvedExpressions()) {
-            LOGGER.at(Level.WARNING).log(
-                    "[patcher] unresolved expression at %s (\"%s\"): %s", ue.where(), ue.expression(), ue.reason());
+            String where = ue.target() == null || ue.target().equals(ue.where())
+                    ? ue.where() : ue.target() + " " + ue.where();
+            diagnostics.add(String.format(
+                    "[patcher] unresolved expression at %s (\"%s\"): %s", where, ue.expression(), ue.reason()));
         }
+        for (String line : diagnostics) {
+            if (!reportedDiagnostics.contains(line)) LOGGER.at(Level.WARNING).log("%s", line);
+        }
+        reportedDiagnostics = diagnostics;
         for (CompileResult.GatedSource gs : result.gatedSources()) {
             if (gs.scope() == null) {
                 LOGGER.atFine().log(
@@ -254,6 +273,7 @@ public final class PatchManager implements PatchChangeListener {
         patchToTarget.clear();
         patchToTarget.putAll(result.sourceToTarget());
         lastResult = result;
+        PatchlyVarBridge.publish(result.vars());
         return result;
     }
 

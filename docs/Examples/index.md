@@ -21,6 +21,7 @@ Looking for one specific operator or meta-key? Jump straight to the page that de
 | `~` element merge | merge into one element of an array | [Match-Array-Element](Match-Array-Element) |
 | `$Match` | locate which array element to merge | [Match-Array-Element](Match-Array-Element) |
 | `$Requires` | apply only if certain packs are installed | [Parent-Override](Conditional-Override), [Droplists](Droplists) |
+| `$Requires` flags | apply only when a `.vars` value is on | [Feature-Flags](Feature-Flags) |
 | `$Priority` | decide the winner when patches conflict | [Quality-Override](Quality-Override) |
 | `.batch` | gate and decorate a whole folder at once | [Batch-Folder](Batch-Folder) |
 | nested merge | change one field deep inside an object | [Recipe-Change](Recipe-Change), [Player-Stat](Player-Stat) |
@@ -49,6 +50,7 @@ Looking for one specific operator or meta-key? Jump straight to the page that de
 | 13 | [Put your entries at the front of an array](Prepend-Array) | `-` prepend |
 | 14 | [Balance a whole armor set from one number](Variables) | `.vars` + `#` expression |
 | 15 | [Put a whole folder of patches behind one condition](Batch-Folder) | `.batch` folder scope |
+| 16 | [Switch a feature on or off from one value](Feature-Flags) | `.vars` flag + `$Requires` expression |
 
 ## What Patchly can and cannot patch (for now)
 

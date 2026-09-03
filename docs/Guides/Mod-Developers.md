@@ -87,6 +87,31 @@ Put `.patch` files in your pack tree exactly as a pack developer would: mirror t
 
 That is the working setup. The sections below explain why each piece is shaped this way.
 
+## 4. (Optional) Read variables and flags
+
+`com.riprod.patchly.api.PatchlyVars` exposes the resolved `.vars` environment to Java. It works from **every** copy of Patchly in the JVM, including one that lost the election, because the active copy publishes the values through plain JDK objects that every classloader shares.
+
+```java
+import com.riprod.patchly.api.PatchlyVars;
+
+boolean heavy = PatchlyVars.getFlag("HeavyArmor");          // true when > 0; false when missing
+double mana = PatchlyVars.getNumber("Adamantite.Mana");     // 0 when missing
+Map<String, Map<String, Double>> all = PatchlyVars.get();   // globals under "Globals", then one entry per scope
+
+PatchlyVars.whenReady().thenAccept(vars -> { ... });         // completes once, after the first rebuild
+PatchlyVars.onChange(vars -> { ... });                       // every later rebuild whose values differ
+```
+
+| Call | Returns | Notes |
+|---|---|---|
+| `getFlag(ref)` | `boolean` | `ref` is `Name`, `Globals.Name`, or `Scope.Name`. Numbers are flags: `> 0` is true. |
+| `getNumber(ref)` | `double` | Booleans are numbers: `true` is `1`, `false` is `0`. |
+| `get()` | nested map | Unmodifiable snapshot. Do not cache it in a field; read it per use. |
+| `whenReady()` | `CompletableFuture` | Values are empty until Patchly's first rebuild after `LoadAssetEvent`, so a read during `setup()` sees nothing. Use this for boot-time work. |
+| `onChange(listener)` | nothing | Fires only when the resolved map actually changed (a `.vars` edit, a pack added or removed). Runs on the thread that triggered the rebuild, which may be the file watcher; dispatch to a world thread yourself. |
+
+If the only active Patchly is a legacy 2.x copy, `whenReady()` completes immediately with an empty map and `get()` stays empty. `/patchly vars` prints the current snapshot in game.
+
 ---
 
 ## Why bundle instead of depend?

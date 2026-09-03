@@ -143,6 +143,23 @@ When `$Requires` is a list, each entry is a clause and **all** clauses must pass
 
 reads as `A && !B && (C or D)`: A must be present, B must be absent, and at least one of C/D must be present. Each pack still accepts an optional `:range`, e.g. `"Author:A:>=1.2.0"` or `"-Author:B:>=2.0.0"` (absent, or present below 2.0.0). Avoid comma-style version ranges, since the comma is read as the OR separator.
 
+### Feature flags
+
+An entry with no colon is an expression over `.vars` variables, and passes when it evaluates greater than zero. Put `true`/`false` in `Globals.vars`:
+
+`Server/Globals.vars`
+```json
+{ "AssetIsEnabled": true, "OldNumbers": false, "UseFallback": true }
+```
+
+and reference it bare or qualified by its file:
+
+```json
+{ "$Requires": ["$AssetIsEnabled", "-$OldNumbers", "Riprod:SomePack,$Globals.UseFallback"] }
+```
+
+Flags and packs combine under the same AND/OR/NOT rules. A leading `-` is boolean NOT, so `-$Flag` passes when the value is `0` or below. An unknown variable evaluates false and gates the source; `/patchly explain <target>` prints the reason. `Globals.vars` itself may only be gated by packs, a named `.vars` by packs and globals, and everything else by any scope. See [Feature-Flags](Feature-Flags).
+
 ## Resolving conflicts with another pack
 
 If two packs patch the same field, both apply in load order and the last one wins. To guarantee yours wins regardless of load order, bump `$Priority`:
@@ -175,7 +192,7 @@ Suffix a numeric key with `#` to make its value an expression, and reference a v
 ] } } }
 ```
 
-Patchly evaluates it and writes `12` to `Amount`. Expressions support `+ - * / ( )` and `round floor ceil abs int min max clamp`. `Globals.vars` is referenced bare (`$Name`); every other file is a named scope (`$Filename.Name`). A named `.vars` value may reference globals but not another scope, so do cross-scope math in the patch. A bad expression is skipped with a log line, never fatal, and `.vars` files are never emitted as assets. See [Variables](Variables) for the full walkthrough.
+Patchly evaluates it and writes `12` to `Amount`. Expressions support `+ - * / ( )` and `round floor ceil abs int min max clamp`. `Globals.vars` is referenced bare (`$Name`, or `$Globals.Name`); every other file is a named scope (`$Filename.Name`). A `.vars` value may also be `true` or `false`, stored as `1` or `0`. A named `.vars` value may reference globals but not another scope, so do cross-scope math in the patch. A bad expression is skipped with a log line, never fatal, and `.vars` files are never emitted as assets. `/patchly vars` prints every resolved value. See [Variables](Variables) for the full walkthrough.
 
 # Array Operations
 

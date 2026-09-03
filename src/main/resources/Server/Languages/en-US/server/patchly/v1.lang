@@ -6,6 +6,7 @@ command.watcher.start.desc=Enable the patch source file watcher
 command.watcher.stop.desc=Disable the patch source file watcher
 command.explain.desc=Show every source that built one patched asset
 command.explain.target.desc=Asset id or pack-relative path to explain
+command.vars.desc=Show every resolved .vars variable and flag
 
 prefix=<color is="#ffaa00"><b>[Patchly]</b></color>
 enabled=<color is="#55ff55">enabled</color>
@@ -27,4 +28,11 @@ explain.line=  <color is="#55ff55">{kind}</color>  {source}  <color is="#888888"
 explain.gated=  <color is="#888888">skipped</color>  {source}  <color is="#888888">{directive} {condition}</color>
 explain.missingBase=  <color is="#ff5555">no base</color>  {source}
 explain.unresolvedImport=  <color is="#ff5555">unresolved $Import</color>  {ref}
+explain.unresolvedExpression=  <color is="#ff5555">unresolved expression</color>  {where}  <color is="#888888">"{expression}": {reason}</color>
+explain.gatedScope=    <color is="#888888">scope <b>{scope}</b> is gated: {source} {directive} {condition}</color>
 explain.tripped=  <color is="#ff5555">loop breaker tripped, output frozen</color>
+
+vars.empty=<msg key="server.patchly.v1.prefix"/> <color is="#888888">No variables resolved; add a .vars file or run <b>/patchly reload</b></color>
+vars.header=<color is="#ffaa00"><b>Variables</b></color>
+vars.scope=> <color is="#55ff55">{scope}</color>
+vars.line=-- {name}  <color is="#888888">{value}</color>

@@ -10,6 +10,7 @@ import com.riprod.patchly.core.compile.CompileResult.UnresolvedExpression;
 import com.riprod.patchly.core.vars.ExpressionEvaluator.VarLookup;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.List;
 
 public final class ComputeOperator implements MergeOperator {
@@ -47,12 +48,12 @@ public final class ComputeOperator implements MergeOperator {
             try {
                 target.add(baseKey, numberPrimitive(ExpressionEvaluator.eval(expression, lookup)));
             } catch (ExpressionException e) {
-                record(ctx, baseKey, expression, e.getMessage());
+                record(ctx, baseKey, expression, e.getMessage(), e.missingScope());
                 target.add(baseKey + SUFFIX, patchValue.deepCopy());
             }
             return;
         }
-        record(ctx, baseKey, patchValue.toString(), "expression key must hold a number or an expression string");
+        record(ctx, baseKey, patchValue.toString(), "expression key must hold a number or an expression string", null);
         target.add(baseKey + SUFFIX, patchValue.deepCopy());
     }
 
@@ -67,10 +68,10 @@ public final class ComputeOperator implements MergeOperator {
     }
 
     private void record(@Nonnull MergeContext ctx, @Nonnull String baseKey,
-            @Nonnull String expression, @Nonnull String reason) {
+            @Nonnull String expression, @Nonnull String reason, @Nullable String missingScope) {
         String path = String.join("/", ctx.currentPath());
         String where = path.isEmpty() ? baseKey + SUFFIX : path + "/" + baseKey + SUFFIX;
-        errors.add(new UnresolvedExpression(where, expression, reason));
+        errors.add(new UnresolvedExpression(where, expression, reason, null, missingScope));
     }
 
     @Nonnull

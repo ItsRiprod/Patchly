@@ -8,6 +8,7 @@ import com.riprod.patchly.core.vars.ExpressionEvaluator.VarLookup;
 
 import javax.annotation.Nonnull;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,36 +23,57 @@ public final class VarEnvBuilder {
     @Nonnull
     public static VarEnv build(@Nonnull List<PatchSource> envSources,
             @Nonnull List<UnresolvedExpression> errors) {
-        Map<String, LinkedHashMap<String, JsonElement>> raw = accumulate(envSources);
-
-        Map<String, Double> globals = new HashMap<>();
-        LinkedHashMap<String, JsonElement> globalRaw = raw.get(VarEnv.GLOBAL_SCOPE);
-        if (globalRaw != null) {
-            for (Map.Entry<String, JsonElement> entry : globalRaw.entrySet()) {
-                Double number = asNumber(entry.getValue());
-                if (number == null) {
-                    errors.add(new UnresolvedExpression(VarEnv.GLOBAL_SCOPE + VARS_EXTENSION + ":" + entry.getKey(),
-                            entry.getValue().toString(), "global variable must be a plain number"));
-                    continue;
-                }
-                globals.put(entry.getKey(), number);
-            }
+        List<PatchSource> globalSources = new ArrayList<>();
+        List<PatchSource> scopedSources = new ArrayList<>();
+        for (PatchSource source : envSources) {
+            if (isGlobals(source)) globalSources.add(source);
+            else scopedSources.add(source);
         }
+        Map<String, Double> globals = buildGlobals(globalSources, errors);
+        return new VarEnv(globals, buildScopes(globals, scopedSources, errors));
+    }
 
+    public static boolean isGlobals(@Nonnull PatchSource source) {
+        return stemOf(source.id()).equals(VarEnv.GLOBAL_SCOPE);
+    }
+
+    @Nonnull
+    public static Map<String, Double> buildGlobals(@Nonnull List<PatchSource> globalSources,
+            @Nonnull List<UnresolvedExpression> errors) {
+        Map<String, Double> globals = new HashMap<>();
+        LinkedHashMap<String, JsonElement> globalRaw = accumulate(globalSources).get(VarEnv.GLOBAL_SCOPE);
+        if (globalRaw == null) return globals;
+        for (Map.Entry<String, JsonElement> entry : globalRaw.entrySet()) {
+            Double number = asNumber(entry.getValue());
+            if (number == null) {
+                String where = VarEnv.GLOBAL_SCOPE + VARS_EXTENSION + ":" + entry.getKey();
+                errors.add(new UnresolvedExpression(where, entry.getValue().toString(),
+                        "global variable must be a plain number or boolean", where, null));
+                continue;
+            }
+            globals.put(entry.getKey(), number);
+        }
+        return globals;
+    }
+
+    @Nonnull
+    public static Map<String, Map<String, Double>> buildScopes(@Nonnull Map<String, Double> globals,
+            @Nonnull List<PatchSource> scopedSources,
+            @Nonnull List<UnresolvedExpression> errors) {
         VarLookup globalsOnly = new VarEnv(globals, Map.of()).lookup();
         Map<String, Map<String, Double>> scopes = new HashMap<>();
-        for (Map.Entry<String, LinkedHashMap<String, JsonElement>> scope : raw.entrySet()) {
-            if (scope.getKey().equals(VarEnv.GLOBAL_SCOPE)) continue;
+        for (Map.Entry<String, LinkedHashMap<String, JsonElement>> scope : accumulate(scopedSources).entrySet()) {
+            String stem = scope.getKey();
+            if (stem.equals(VarEnv.GLOBAL_SCOPE)) continue;
             Map<String, Double> resolved = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : scope.getValue().entrySet()) {
                 Double value = resolveScoped(entry.getValue(), globalsOnly,
-                        scope.getKey() + VARS_EXTENSION + ":" + entry.getKey(), errors);
+                        stem + VARS_EXTENSION + ":" + entry.getKey(), errors);
                 if (value != null) resolved.put(entry.getKey(), value);
             }
-            scopes.put(scope.getKey(), resolved);
+            scopes.put(stem, resolved);
         }
-
-        return new VarEnv(globals, scopes);
+        return scopes;
     }
 
     @Nonnull
@@ -77,19 +99,20 @@ public final class VarEnvBuilder {
             try {
                 return ExpressionEvaluator.eval(expression, globalsOnly);
             } catch (ExpressionException e) {
-                errors.add(new UnresolvedExpression(where, expression, e.getMessage()));
+                errors.add(new UnresolvedExpression(where, expression, e.getMessage(), where, e.missingScope()));
                 return null;
             }
         }
         errors.add(new UnresolvedExpression(where, value.toString(),
-                "variable must be a number or an expression string"));
+                "variable must be a number, a boolean, or an expression string", where, null));
         return null;
     }
 
     private static Double asNumber(@Nonnull JsonElement value) {
-        if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()) {
-            return value.getAsDouble();
-        }
+        if (!value.isJsonPrimitive()) return null;
+        var primitive = value.getAsJsonPrimitive();
+        if (primitive.isNumber()) return primitive.getAsDouble();
+        if (primitive.isBoolean()) return primitive.getAsBoolean() ? 1.0 : 0.0;
         return null;
     }
 

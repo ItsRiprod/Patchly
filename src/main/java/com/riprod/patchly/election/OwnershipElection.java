@@ -76,6 +76,10 @@ public final class OwnershipElection {
         return winner;
     }
 
+    public boolean isLegacyDeferred() {
+        return legacyDeferred;
+    }
+
     @Nonnull
     public String getOwnerId() {
         return ownerId;

@@ -112,6 +112,23 @@ Entries in the list are ANDed. Inside one entry, comma-separated packs are ORed,
 
 reads as `A && !B && (C or D)`. Avoid commas inside a version range, since the comma is the OR separator.
 
+#### Feature flags in `$Requires`
+
+Any entry without a colon is an expression over your `.vars` variables instead of a pack id. It passes when the result is greater than zero. `.vars` values may be `true`/`false` (stored as `1`/`0`), so a global in `Globals.vars` works as a flag:
+
+`Server/Globals.vars`
+```json
+{ "AssetIsEnabled": true, "OtherAssetFlag": -15, "SomeNumber": -1 }
+```
+
+```json
+{ "$Requires": ["$AssetIsEnabled", "-$OtherAssetFlag", "abs($SomeNumber * 2)", "Riprod:SomePack,$Globals.AssetIsEnabled"] }
+```
+
+Flags mix freely with pack ids under the same AND/OR/NOT rules. A global is referenced bare (`$Name`) or qualified by its file (`$Globals.Name`); both are the same variable. A leading `-` is boolean NOT, so `-$Flag` passes when the flag is `0` or below (including `-$Zero`, since `0` is not greater than `0`). An expression that references an unknown variable evaluates false and gates the source; `/patchly explain <target>` shows the reason.
+
+What may gate what: `Globals.vars` may only be gated by packs, a named `.vars` may be gated by packs and globals, and `.patch`/`.put`/`.batch` may use every scope.
+
 ### `$Priority` - pick a winner on conflicts
 
 Integer, default `0`. Lower applies first, higher applies last → higher wins on field conflicts. Tie-break is pack load order.
@@ -204,6 +221,22 @@ public final class MyPlugin extends JavaPlugin {
 > Note: When doing `./gradlew runServer` for testing, you cannot have Patchly.jar in the ./mods folder as well as your dependency. This is because the devserver will scan your deps and find your Patchly.jar's manifest.json and register it also as it's own pack. if it also exists in ./mods/ then it will register twice and die. You do not need Patchly.jar in your mods/ folder anyways, so just delete it lol 
 
 If both standalone `Patchly.jar` and a bundling mod are installed in the same JVM, each votes its version and the newest one becomes the single active owner; older copies defer and noop. The decision is final at boot. No duplicate work, no conflicts.
+
+### Reading variables and flags from Java
+
+`PatchlyVars` is a static API that works from any copy of Patchly, including one that lost the election, because the active copy publishes the resolved variables through JDK objects shared across the JVM:
+
+```java
+import com.riprod.patchly.api.PatchlyVars;
+
+PatchlyVars.getFlag("AssetIsEnabled");      // true when the global is > 0
+PatchlyVars.getNumber("Adamantite.Mana");   // 0 when missing
+PatchlyVars.get();                          // Map<scope, Map<name, value>>, globals under "Globals"
+PatchlyVars.whenReady().thenAccept(vars -> ...);   // completes after the first rebuild
+PatchlyVars.onChange(vars -> ...);                 // fires only when the resolved map actually changed
+```
+
+Variables are empty until Patchly's first rebuild after `LoadAssetEvent`, so a read during `setup()` sees nothing; use `whenReady()` for boot-time work. Change listeners run on whichever thread triggered the rebuild (it may be the file watcher), so dispatch to a world thread yourself. `/patchly vars` prints the current snapshot.
 
 ## Notes
 

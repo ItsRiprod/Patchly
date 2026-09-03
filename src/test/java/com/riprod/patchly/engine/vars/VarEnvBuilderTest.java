@@ -76,6 +76,50 @@ class VarEnvBuilderTest {
     }
 
     @Test
+    void booleansBecomeOneAndZero() throws ExpressionException {
+        List<UnresolvedExpression> errors = new ArrayList<>();
+        VarEnv env = VarEnvBuilder.build(List.of(
+                vars("Globals.vars", "{ \"On\": true, \"Off\": false }"),
+                vars("Scope.vars", "{ \"Flag\": true, \"Derived\": \"$On * 5\" }")), errors);
+        assertTrue(errors.isEmpty());
+        assertEquals(1.0, lookup(env, "On"));
+        assertEquals(0.0, lookup(env, "Off"));
+        assertEquals(1.0, lookup(env, "Scope.Flag"));
+        assertEquals(5.0, lookup(env, "Scope.Derived"));
+    }
+
+    @Test
+    void qualifiedGlobalsResolveSameAsBare() throws ExpressionException {
+        List<UnresolvedExpression> errors = new ArrayList<>();
+        VarEnv env = VarEnvBuilder.build(List.of(
+                vars("Globals.vars", "{ \"Mana\": 7 }"),
+                vars("Scope.vars", "{ \"Twice\": \"$Globals.Mana * 2\" }")), errors);
+        assertTrue(errors.isEmpty());
+        assertEquals(7.0, lookup(env, "Globals.Mana"));
+        assertEquals(14.0, lookup(env, "Scope.Twice"));
+    }
+
+    @Test
+    void asMapNestsGlobalsUnderReservedKey() {
+        List<UnresolvedExpression> errors = new ArrayList<>();
+        VarEnv env = VarEnvBuilder.build(List.of(
+                vars("Globals.vars", "{ \"On\": true }"),
+                vars("Adamantite.vars", "{ \"Head\": 3 }")), errors);
+        var map = env.asMap();
+        assertEquals(1.0, map.get("Globals").get("On"));
+        assertEquals(3.0, map.get("Adamantite").get("Head"));
+        assertThrows(UnsupportedOperationException.class, () -> map.put("X", null));
+    }
+
+    @Test
+    void missingScopeIsCarriedOnTheException() {
+        List<UnresolvedExpression> errors = new ArrayList<>();
+        VarEnv env = VarEnvBuilder.build(List.of(vars("Globals.vars", "{ \"X\": 1 }")), errors);
+        ExpressionException e = assertThrows(ExpressionException.class, () -> env.lookup().lookup("Gone.X"));
+        assertEquals("Gone", e.missingScope());
+    }
+
+    @Test
     void nonNumericGlobalRecordsError() {
         List<UnresolvedExpression> errors = new ArrayList<>();
         VarEnv env = VarEnvBuilder.build(List.of(vars("Globals.vars", "{ \"Bad\": \"text\" }")), errors);

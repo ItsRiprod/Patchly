@@ -13,6 +13,7 @@ import javax.annotation.Nonnull;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class PatchlyCommand extends CommandBase {
     private static final String LANG = "server.patchly.v1.";
@@ -27,6 +28,51 @@ public final class PatchlyCommand extends CommandBase {
         addSubCommand(new ReloadCommand(manager));
         addSubCommand(new WatcherCommand(manager));
         addSubCommand(new ExplainCommand(manager));
+        addSubCommand(new VarsCommand(manager));
+    }
+
+    @Nonnull
+    private static String number(double value) {
+        return value == Math.rint(value) && Math.abs(value) < 9007199254740992.0
+                ? Long.toString((long) value)
+                : Double.toString(value);
+    }
+
+    private static final class VarsCommand extends CommandBase {
+        private final PatchManager manager;
+
+        private VarsCommand(@Nonnull PatchManager manager) {
+            super("vars", LANG + "command.vars.desc");
+            this.manager = manager;
+        }
+
+        @Override
+        protected void executeSync(@Nonnull CommandContext context) {
+            Map<String, Map<String, Double>> vars = manager.getVars();
+            boolean any = false;
+            for (Map<String, Double> members : vars.values()) {
+                if (!members.isEmpty()) any = true;
+            }
+            if (!any) {
+                context.sendMessage(markup(Message.translation(LANG + "vars.empty")));
+                return;
+            }
+            context.sendMessage(markup(Message.translation(LANG + "vars.header")));
+            List<String> scopes = new ArrayList<>(vars.keySet());
+            scopes.sort(null);
+            for (String scope : scopes) {
+                Map<String, Double> members = vars.get(scope);
+                if (members.isEmpty()) continue;
+                context.sendMessage(markup(Message.translation(LANG + "vars.scope").param("scope", scope)));
+                List<String> names = new ArrayList<>(members.keySet());
+                names.sort(null);
+                for (String name : names) {
+                    context.sendMessage(markup(Message.translation(LANG + "vars.line")
+                            .param("name", name)
+                            .param("value", number(members.get(name)))));
+                }
+            }
+        }
     }
 
     @Override
@@ -188,9 +234,34 @@ public final class PatchlyCommand extends CommandBase {
                             .param("ref", ui.ref())));
                 }
             }
+            for (CompileResult.UnresolvedExpression ue : result.unresolvedExpressions()) {
+                if (!target.equals(ue.target())) continue;
+                context.sendMessage(markup(Message.translation(LANG + "explain.unresolvedExpression")
+                        .param("where", ue.where())
+                        .param("expression", ue.expression())
+                        .param("reason", ue.reason())));
+                CompileResult.GatedSource gatedScope = gatedVars(result, ue.missingScope());
+                if (gatedScope != null) {
+                    context.sendMessage(markup(Message.translation(LANG + "explain.gatedScope")
+                            .param("scope", ue.missingScope())
+                            .param("source", gatedScope.source().toString())
+                            .param("directive", gatedScope.directive())
+                            .param("condition", gatedScope.condition())));
+                }
+            }
             if (manager.getTrippedTargets().contains(target)) {
                 context.sendMessage(markup(Message.translation(LANG + "explain.tripped")));
             }
+        }
+
+        private static CompileResult.GatedSource gatedVars(@Nonnull CompileResult result, String scope) {
+            if (scope == null) return null;
+            String file = scope + ".vars";
+            for (CompileResult.GatedSource gs : result.gatedSources()) {
+                Path name = gs.source().getFileName();
+                if (name != null && name.toString().equals(file)) return gs;
+            }
+            return null;
         }
 
         @Nonnull

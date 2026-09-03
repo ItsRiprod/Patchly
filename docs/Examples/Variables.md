@@ -92,9 +92,11 @@ and every material's Mana doubles at once.
 ## Notes
 
 - **Two kinds of scope.** `Globals.vars` (exact spelling) is the one file you reference bare, as
-  `$Name`. Every other file is a named scope you reference as `$Filename.Name` — the filename is
-  the scope and folders are ignored, so `Armor.vars` is reached as `$Armor.Spread_Head` wherever it
-  sits.
+  `$Name`, or as `$Globals.Name` like any other scope. Every other file is a named scope you
+  reference as `$Filename.Name` — the filename is the scope and folders are ignored, so `Armor.vars`
+  is reached as `$Armor.Spread_Head` wherever it sits.
+- **Booleans are numbers.** A value of `true` is stored as `1` and `false` as `0`, so a flag can be
+  multiplied like any other variable and used in `$Requires`. See [Feature-Flags](Feature-Flags).
 - **`#` goes on the key, the expression is the value.** `"Amount#": "..."`. It resolves anywhere a
   number lives, including inside an array element like the `Mana?` one above. On success the `#`
   key is replaced by the plain key; a whole result writes as an integer (`12`), a fractional one as

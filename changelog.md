@@ -1,3 +1,15 @@
+# v3.6.1
+
+- `$Requires` accepts feature flags. Any entry without a colon is an expression over your `.vars` variables and passes when it evaluates greater than zero, so `"$Requires": ["$HeavyArmor", "-$Legacy", "Riprod:Hexcode,$Fallback"]` mixes flags and packs under the existing AND/OR/NOT rules. A leading `-` is boolean NOT (`-$Zero` is true). An unknown variable evaluates false and the reason is recorded.
+
+- `.vars` values may be `true` or `false`, stored as `1` and `0`. A global may be referenced qualified by its file, `$Globals.Name`, as well as bare `$Name`.
+
+- Variables are now resolved before gating, in three layers: `Globals.vars` may only be gated by packs, a named `.vars` by packs and globals, and `.patch`/`.put`/`.batch` by every scope. Nested array-element `$Requires` sees flags as well.
+
+- New Java API `com.riprod.patchly.api.PatchlyVars`: `getFlag`, `getNumber`, `get`, `whenReady`, `onChange`. Works from any copy of Patchly in the JVM, including one that lost the election, because the active copy publishes through shared JDK objects. Values are empty until the first rebuild after `LoadAssetEvent`; change listeners fire only when the resolved map differs.
+
+- `/patchly vars` prints every resolved scope and value. `/patchly explain <target>` now lists unresolved expressions for that target, including a `$Requires` expression that failed, and when a missing scope was gated out it names the `.vars` file and the condition that gated it.
+
 # v3.5.4
 
 Updated patchly to correctly be MIT

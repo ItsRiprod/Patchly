@@ -14,7 +14,8 @@ public record CompileResult(@Nonnull Map<String, JsonObject> outputs,
         @Nonnull List<UnresolvedImport> unresolvedImports,
         @Nonnull List<UnresolvedExpression> unresolvedExpressions,
         @Nonnull List<GatedSource> gatedSources,
-        @Nonnull Map<String, List<Contribution>> contributions) {
+        @Nonnull Map<String, List<Contribution>> contributions,
+        @Nonnull Map<String, Map<String, Double>> vars) {
 
     public record MissingBase(@Nonnull Path source, @Nonnull String target) {
     }
@@ -35,6 +36,15 @@ public record CompileResult(@Nonnull Map<String, JsonObject> outputs,
     }
 
     public record UnresolvedExpression(@Nonnull String where, @Nonnull String expression,
-            @Nonnull String reason) {
+            @Nonnull String reason, @Nullable String target, @Nullable String missingScope) {
+
+        public UnresolvedExpression(@Nonnull String where, @Nonnull String expression, @Nonnull String reason) {
+            this(where, expression, reason, null, null);
+        }
+
+        @Nonnull
+        public UnresolvedExpression withTarget(@Nonnull String target) {
+            return new UnresolvedExpression(where, expression, reason, target, missingScope);
+        }
     }
 }
