@@ -1,11 +1,11 @@
-package com.riprod.patchly.core.ops.builtin;
+package com.riprod.patchly.builtin.ops;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.riprod.patchly.core.MergeContext;
-import com.riprod.patchly.core.MergeOperator;
+import com.riprod.patchly.core.MergeEngine;
 import com.riprod.patchly.core.MetaKeys;
+import com.riprod.patchly.core.ops.MergeOperator;
 
 import javax.annotation.Nonnull;
 
@@ -23,7 +23,7 @@ public final class ReplaceOperator implements MergeOperator {
 
     @Override
     public void apply(@Nonnull JsonObject target, @Nonnull String baseKey,
-                      @Nonnull JsonElement patchValue, @Nonnull MergeContext ctx) {
+                      @Nonnull JsonElement patchValue, @Nonnull MergeEngine ctx) {
         if (patchValue.isJsonNull()) {
             target.remove(baseKey);
             return;
@@ -50,13 +50,13 @@ public final class ReplaceOperator implements MergeOperator {
 
     @Override
     public void onLocatorMiss(@Nonnull JsonArray base, int index,
-                              @Nonnull JsonObject cleanPayload, @Nonnull MergeContext ctx) {
+                              @Nonnull JsonObject cleanPayload, @Nonnull MergeEngine ctx) {
 
     }
 
     @Override
     public void onPlainElement(@Nonnull JsonArray base, int index,
-                               @Nonnull JsonElement element, @Nonnull MergeContext ctx) {
+                               @Nonnull JsonElement element, @Nonnull MergeEngine ctx) {
         if (element.isJsonObject()) {
             JsonObject resolved = new JsonObject();
             ctx.mergeObject(resolved, element.getAsJsonObject());
@@ -66,7 +66,7 @@ public final class ReplaceOperator implements MergeOperator {
         }
     }
 
-    private static boolean hasAnyMarker(@Nonnull JsonArray arr, @Nonnull MergeContext ctx) {
+    private static boolean hasAnyMarker(@Nonnull JsonArray arr, @Nonnull MergeEngine ctx) {
         for (JsonElement el : arr) {
             if (ctx.hasLocatorMarker(el)) return true;
         }

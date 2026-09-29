@@ -2,6 +2,7 @@ package com.riprod.patchly.engine.vars;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.hypixel.hytale.common.plugin.PluginIdentifier;
 import com.riprod.patchly.core.JsonDeepMerge;
 import com.riprod.patchly.core.MergeTable;
 import com.riprod.patchly.core.compile.BaseResolver;
@@ -29,13 +30,9 @@ class PatchCompilerVarsTest {
     private static final SourceKind PATCH = new PatchKind();
     private static final SourceKind VARS = new VarsKind();
     private static final PatchContext ALL = new PatchContext() {
-        @Override
-        public boolean packPresent(@Nonnull String packName) {
-            return true;
-        }
 
         @Override
-        public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
+        public boolean versionSatisfies(@Nonnull PluginIdentifier packName, @Nonnull String range) {
             return true;
         }
     };
@@ -77,13 +74,12 @@ class PatchCompilerVarsTest {
     }
 
     private static final PatchContext ONLY_A = new PatchContext() {
-        @Override
-        public boolean packPresent(@Nonnull String packName) {
-            return packName.equals("Author:A");
+        public boolean packPresent(@Nonnull PluginIdentifier packName) {
+            return packName.toString().equals("Author:A");
         }
 
         @Override
-        public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
+        public boolean versionSatisfies(@Nonnull PluginIdentifier packName, @Nonnull String range) {
             return packPresent(packName);
         }
     };

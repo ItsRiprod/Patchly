@@ -1,8 +1,8 @@
-package com.riprod.patchly.core.ops.builtin;
+package com.riprod.patchly.builtin.ops;
 
 import javax.annotation.Nonnull;
 
-import com.riprod.patchly.core.ops.builtin.interfaces.ArrayAddOperator;
+import com.riprod.patchly.builtin.ops.interfaces.ArrayAddOperator;
 
 public final class AppendOperator extends ArrayAddOperator {
     @Nonnull

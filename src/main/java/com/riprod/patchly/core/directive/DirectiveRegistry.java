@@ -1,9 +1,9 @@
 package com.riprod.patchly.core.directive;
 
-import com.riprod.patchly.core.directive.builtins.AssetImportDirective;
-import com.riprod.patchly.core.directive.builtins.MatchDirective;
-import com.riprod.patchly.core.directive.builtins.PriorityDirective;
-import com.riprod.patchly.core.directive.builtins.RequiresDirective;
+import com.riprod.patchly.builtin.directive.AssetImportDirective;
+import com.riprod.patchly.builtin.directive.MatchDirective;
+import com.riprod.patchly.builtin.directive.PriorityDirective;
+import com.riprod.patchly.builtin.directive.RequiresDirective;
 import com.riprod.patchly.registry.KeyValidator;
 import com.riprod.patchly.registry.Registry;
 

@@ -1,10 +1,10 @@
-package com.riprod.patchly.core.ops.builtin;
+package com.riprod.patchly.builtin.ops;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.riprod.patchly.core.MergeContext;
-import com.riprod.patchly.core.MergeOperator;
+import com.riprod.patchly.core.MergeEngine;
+import com.riprod.patchly.core.ops.MergeOperator;
 
 import javax.annotation.Nonnull;
 
@@ -22,20 +22,20 @@ public final class PositionalOperator implements MergeOperator {
 
     @Override
     public void apply(@Nonnull JsonObject target, @Nonnull String baseKey,
-                      @Nonnull JsonElement patchValue, @Nonnull MergeContext ctx) {
+                      @Nonnull JsonElement patchValue, @Nonnull MergeEngine ctx) {
         if (!patchValue.isJsonArray()) return;
         ctx.runArrayMerge(target, baseKey, patchValue.getAsJsonArray(), this);
     }
 
     @Override
     public void onLocatorMiss(@Nonnull JsonArray base, int index,
-                              @Nonnull JsonObject cleanPayload, @Nonnull MergeContext ctx) {
+                              @Nonnull JsonObject cleanPayload, @Nonnull MergeEngine ctx) {
         ctx.mergeAtIndex(base, index, cleanPayload);
     }
 
     @Override
     public void onPlainElement(@Nonnull JsonArray base, int index,
-                               @Nonnull JsonElement element, @Nonnull MergeContext ctx) {
+                               @Nonnull JsonElement element, @Nonnull MergeEngine ctx) {
         ctx.mergeAtIndex(base, index, element);
     }
 }

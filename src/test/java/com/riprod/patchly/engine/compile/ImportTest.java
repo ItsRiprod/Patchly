@@ -3,6 +3,7 @@ package com.riprod.patchly.engine.compile;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.hypixel.hytale.common.plugin.PluginIdentifier;
 import com.riprod.patchly.core.JsonDeepMerge;
 import com.riprod.patchly.core.MergeTable;
 import com.riprod.patchly.core.compile.AssetIndex;
@@ -23,7 +24,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ImportTest {
     private static final MergeTable TABLE = JsonDeepMerge.activeTable();
@@ -31,13 +31,9 @@ class ImportTest {
     private static final SourceKind PUT = new PutKind();
 
     private static final PatchContext ALL_PRESENT = new PatchContext() {
-        @Override
-        public boolean packPresent(@Nonnull String packName) {
-            return true;
-        }
 
         @Override
-        public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
+        public boolean versionSatisfies(@Nonnull PluginIdentifier packName, @Nonnull String range) {
             return true;
         }
     };

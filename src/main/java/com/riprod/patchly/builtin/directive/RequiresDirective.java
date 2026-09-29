@@ -1,6 +1,8 @@
-package com.riprod.patchly.core.directive.builtins;
+package com.riprod.patchly.builtin.directive;
 
 import com.google.gson.JsonElement;
+import com.hypixel.hytale.common.plugin.PluginIdentifier;
+import com.hypixel.hytale.logger.HytaleLogger;
 import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.core.directive.RootDirective;
 import com.riprod.patchly.core.vars.ExpressionEvaluator;
@@ -82,10 +84,18 @@ public final class RequiresDirective implements RootDirective {
     }
 
     private static boolean packSatisfied(@Nonnull String entry, @Nonnull PatchContext ctx) {
-        int secondColon = entry.indexOf(':', entry.indexOf(':') + 1);
-        String name = secondColon >= 0 ? entry.substring(0, secondColon) : entry;
-        String range = secondColon >= 0 ? entry.substring(secondColon + 1) : null;
-        return ctx.packPresent(name) && (range == null || ctx.versionSatisfies(name, range));
+        try {
+
+            String[] split = entry.split(":", 2);
+            var identifier = new PluginIdentifier(split[0], split[1]);
+            
+            var version = split.length > 2 ? split[2] : "*";
+            
+            return ctx.versionSatisfies(identifier, version);
+        } catch (Exception e) {
+            // failed to parse
+            return false;
+        }
     }
 
     private static boolean expressionSatisfied(@Nonnull String entry, @Nonnull PatchContext ctx) {

@@ -5,6 +5,7 @@ import javax.annotation.Nullable;
 
 import com.riprod.patchly.core.directive.DirectiveTable;
 import com.riprod.patchly.core.directive.ElementDirective;
+import com.riprod.patchly.core.ops.MergeOperator;
 
 public record MergeTable(@Nonnull OperatorTable operators, @Nonnull DirectiveTable directives) {
     @Nonnull

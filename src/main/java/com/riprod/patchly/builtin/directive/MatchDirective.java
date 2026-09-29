@@ -1,4 +1,4 @@
-package com.riprod.patchly.core.directive.builtins;
+package com.riprod.patchly.builtin.directive;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

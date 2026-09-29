@@ -1,6 +1,9 @@
 package com.riprod.patchly.core;
 
 import javax.annotation.Nonnull;
+
+import com.riprod.patchly.core.ops.MergeOperator;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;

@@ -4,14 +4,14 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.riprod.patchly.builtin.ops.ReplaceOperator;
 import com.riprod.patchly.core.JsonDeepMerge;
-import com.riprod.patchly.core.MergeContext;
-import com.riprod.patchly.core.MergeOperator;
+import com.riprod.patchly.core.MergeEngine;
 import com.riprod.patchly.core.MergeTable;
 import com.riprod.patchly.core.OperatorRegistry;
 import com.riprod.patchly.core.OperatorTable;
 import com.riprod.patchly.core.directive.DirectiveRegistry;
-import com.riprod.patchly.core.ops.builtin.ReplaceOperator;
+import com.riprod.patchly.core.ops.MergeOperator;
 
 import org.junit.jupiter.api.Test;
 
@@ -38,14 +38,14 @@ class ExtensibilityTest {
 
         @Override
         public void apply(@Nonnull JsonObject target, @Nonnull String baseKey,
-                          @Nonnull JsonElement patchValue, @Nonnull MergeContext ctx) {
+                          @Nonnull JsonElement patchValue, @Nonnull MergeEngine ctx) {
             if (!patchValue.isJsonArray()) return;
             ctx.runArrayMerge(target, baseKey, patchValue.getAsJsonArray(), this);
         }
 
         @Override
         public void onLocatorHit(@Nonnull JsonArray base, @Nonnull List<Integer> indices,
-                                 @Nonnull JsonObject cleanPayload, @Nonnull MergeContext ctx) {
+                                 @Nonnull JsonObject cleanPayload, @Nonnull MergeEngine ctx) {
             for (int i = indices.size() - 1; i >= 0; i--) {
                 base.remove((int) indices.get(i));
             }
@@ -53,12 +53,12 @@ class ExtensibilityTest {
 
         @Override
         public void onLocatorMiss(@Nonnull JsonArray base, int index,
-                                  @Nonnull JsonObject cleanPayload, @Nonnull MergeContext ctx) {
+                                  @Nonnull JsonObject cleanPayload, @Nonnull MergeEngine ctx) {
         }
 
         @Override
         public void onPlainElement(@Nonnull JsonArray base, int index,
-                                   @Nonnull JsonElement element, @Nonnull MergeContext ctx) {
+                                   @Nonnull JsonElement element, @Nonnull MergeEngine ctx) {
         }
     }
 

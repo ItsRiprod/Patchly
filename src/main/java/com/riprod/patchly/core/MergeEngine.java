@@ -7,6 +7,7 @@ import com.riprod.patchly.core.directive.ElementDirective;
 import com.riprod.patchly.core.directive.ObjectDirective;
 import com.riprod.patchly.core.directive.PatchContext;
 import com.riprod.patchly.core.directive.RootDirective;
+import com.riprod.patchly.core.ops.MergeOperator;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public final class MergeEngine implements MergeContext {
+public final class MergeEngine {
     private final MergeTable table;
     private final PatchContext patchContext;
     private final ImportResolver importResolver;
@@ -35,7 +36,6 @@ public final class MergeEngine implements MergeContext {
         this.fromTarget = fromTarget;
     }
 
-    @Override
     public void mergeObject(@Nonnull JsonObject target, @Nonnull JsonObject patch) {
         for (ObjectDirective d : table.directives().objectDirectives()) {
             JsonElement marker = patch.get(d.markerKey());
@@ -53,7 +53,6 @@ public final class MergeEngine implements MergeContext {
         }
     }
 
-    @Override
     public void mergeObject(@Nonnull JsonObject target, @Nonnull JsonObject patch, @Nonnull String key) {
         path.add(key);
         try {
@@ -64,20 +63,17 @@ public final class MergeEngine implements MergeContext {
     }
 
     @Nonnull
-    @Override
     public List<String> currentPath() {
         return List.copyOf(path);
     }
 
     @Nullable
-    @Override
     public JsonObject resolveImport(@Nonnull String ref) {
         return importResolver == null ? null : importResolver.resolve(fromTarget, ref);
     }
 
     private record Resolved(String key, MergeOperator operator) {}
 
-    @Override
     public void mergeAtIndex(@Nonnull JsonArray base, int index, @Nonnull JsonElement element) {
         if (index < base.size()) {
             JsonElement baseEl = base.get(index);
@@ -99,13 +95,11 @@ public final class MergeEngine implements MergeContext {
         return out;
     }
 
-    @Override
     public void runArrayMerge(@Nonnull JsonObject target, @Nonnull String baseKey,
                               @Nonnull JsonArray patchArray, @Nonnull MergeOperator operator) {
         withArrayKey(baseKey, () -> runElements(target, baseKey, patchArray, operator));
     }
 
-    @Override
     public void withArrayKey(@Nonnull String baseKey, @Nonnull Runnable body) {
         path.add(baseKey);
         try {
@@ -147,7 +141,6 @@ public final class MergeEngine implements MergeContext {
         }
     }
 
-    @Override
     public boolean isGatedOut(@Nonnull JsonObject patchObject) {
         for (RootDirective rd : table.directives().rootDirectives()) {
             JsonElement value = patchObject.get(rd.markerKey());
@@ -157,7 +150,6 @@ public final class MergeEngine implements MergeContext {
     }
 
     @Nullable
-    @Override
     public LocatorPlan resolveLocator(@Nonnull JsonElement element, @Nonnull JsonArray base) {
         if (!element.isJsonObject()) return null;
         JsonObject obj = element.getAsJsonObject();
@@ -179,7 +171,6 @@ public final class MergeEngine implements MergeContext {
     }
 
     @Nullable
-    @Override
     public JsonObject selectImportedElement(@Nonnull JsonArray candidates) {
         if (activeLocator == null || activeElement == null) return null;
         LocatorPlan plan = activeLocator.locate(activeElement, candidates);
@@ -188,12 +179,10 @@ public final class MergeEngine implements MergeContext {
         return picked.isJsonObject() ? picked.getAsJsonObject() : null;
     }
 
-    @Override
     public void stripElementMeta(@Nonnull JsonObject element) {
         MetaKeys.strip(element, table.directives().objectMarkerKeys());
     }
 
-    @Override
     public boolean hasLocatorMarker(@Nonnull JsonElement element) {
         if (!element.isJsonObject()) return false;
         for (String key : element.getAsJsonObject().keySet()) {

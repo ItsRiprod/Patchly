@@ -1,8 +1,8 @@
-package com.riprod.patchly.core.directive.builtins;
+package com.riprod.patchly.builtin.directive;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.riprod.patchly.core.MergeContext;
+import com.riprod.patchly.core.MergeEngine;
 import com.riprod.patchly.core.directive.ObjectDirective;
 
 import javax.annotation.Nonnull;
@@ -19,7 +19,7 @@ public final class AssetImportDirective implements ObjectDirective {
     }
 
     @Override
-    public void apply(@Nonnull JsonObject target, @Nonnull JsonElement markerValue, @Nonnull MergeContext ctx) {
+    public void apply(@Nonnull JsonObject target, @Nonnull JsonElement markerValue, @Nonnull MergeEngine ctx) {
         List<String> path = ctx.currentPath();
         if (markerValue.isJsonArray()) {
             for (JsonElement e : markerValue.getAsJsonArray()) applyRef(target, e, path, ctx);
@@ -29,7 +29,7 @@ public final class AssetImportDirective implements ObjectDirective {
     }
 
     private void applyRef(@Nonnull JsonObject target, @Nonnull JsonElement ref,
-            @Nonnull List<String> path, @Nonnull MergeContext ctx) {
+            @Nonnull List<String> path, @Nonnull MergeEngine ctx) {
         if (!ref.isJsonPrimitive() || !ref.getAsJsonPrimitive().isString()) return;
         JsonObject asset = ctx.resolveImport(ref.getAsString());
         if (asset == null) return;
@@ -39,7 +39,7 @@ public final class AssetImportDirective implements ObjectDirective {
 
     @Nullable
     private static JsonObject scopeTo(@Nonnull JsonObject asset, @Nonnull List<String> path,
-            @Nonnull MergeContext ctx) {
+            @Nonnull MergeEngine ctx) {
         JsonObject cur = asset;
         for (int i = 0; i < path.size(); i++) {
             JsonElement next = cur.get(path.get(i));

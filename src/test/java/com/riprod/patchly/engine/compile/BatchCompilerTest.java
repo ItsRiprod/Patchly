@@ -2,6 +2,7 @@ package com.riprod.patchly.engine.compile;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.hypixel.hytale.common.plugin.PluginIdentifier;
 import com.riprod.patchly.core.JsonDeepMerge;
 import com.riprod.patchly.core.MergeTable;
 import com.riprod.patchly.core.compile.BaseResolver;
@@ -37,25 +38,17 @@ class BatchCompilerTest {
     private static final String SIBLING = "Server/Item/Items/Patches/Vanilla/";
 
     private static final PatchContext ALL_PRESENT = new PatchContext() {
-        @Override
-        public boolean packPresent(@Nonnull String packName) {
-            return true;
-        }
 
         @Override
-        public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
+        public boolean versionSatisfies(@Nonnull PluginIdentifier packName, @Nonnull String range) {
             return true;
         }
     };
 
     private static final PatchContext NONE_PRESENT = new PatchContext() {
-        @Override
-        public boolean packPresent(@Nonnull String packName) {
-            return false;
-        }
 
         @Override
-        public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
+        public boolean versionSatisfies(@Nonnull PluginIdentifier packName, @Nonnull String range) {
             return false;
         }
     };

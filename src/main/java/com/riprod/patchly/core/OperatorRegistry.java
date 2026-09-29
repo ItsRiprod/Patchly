@@ -1,12 +1,13 @@
 package com.riprod.patchly.core;
 
-import com.riprod.patchly.core.ops.builtin.AlwaysAppendOperator;
-import com.riprod.patchly.core.ops.builtin.AlwaysPrependOperator;
-import com.riprod.patchly.core.ops.builtin.AppendOperator;
-import com.riprod.patchly.core.ops.builtin.FillOperator;
-import com.riprod.patchly.core.ops.builtin.PositionalOperator;
-import com.riprod.patchly.core.ops.builtin.PrependOperator;
-import com.riprod.patchly.core.ops.builtin.ReplaceOperator;
+import com.riprod.patchly.builtin.ops.AlwaysAppendOperator;
+import com.riprod.patchly.builtin.ops.AlwaysPrependOperator;
+import com.riprod.patchly.builtin.ops.AppendOperator;
+import com.riprod.patchly.builtin.ops.FillOperator;
+import com.riprod.patchly.builtin.ops.PositionalOperator;
+import com.riprod.patchly.builtin.ops.PrependOperator;
+import com.riprod.patchly.builtin.ops.ReplaceOperator;
+import com.riprod.patchly.core.ops.MergeOperator;
 import com.riprod.patchly.registry.KeyValidator;
 import com.riprod.patchly.registry.Registry;
 

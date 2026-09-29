@@ -36,7 +36,6 @@ import com.riprod.patchly.source.SourceKindTable;
 import com.riprod.patchly.store.OverridePackRegistrar;
 import com.riprod.patchly.store.OverrideStore;
 import com.riprod.patchly.util.PathUtil;
-import com.riprod.patchly.watch.PatchChangeListener;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -60,7 +59,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
-public final class PatchManager implements PatchChangeListener {
+public final class PatchManager {
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
 
     public static final String PATCHER_VERSION = BuildInfo.VERSION;
@@ -100,7 +99,8 @@ public final class PatchManager implements PatchChangeListener {
 
     public void install() {
         if (!election.claim()) {
-            if (election.isLegacyDeferred()) PatchlyVarBridge.completeEmptyIfLegacy();
+            if (election.isLegacyDeferred())
+                PatchlyVarBridge.completeEmptyIfLegacy();
             return;
         }
         store.wipe();
@@ -109,12 +109,14 @@ public final class PatchManager implements PatchChangeListener {
                 e -> rebuildAndApply("boot:LoadAssetEvent"));
         plugin.getEventRegistry().register(AssetPackRegisterEvent.class, e -> {
             String name = e.getAssetPack().getName();
-            if (isSyntheticOverridePack(name)) return;
+            if (isSyntheticOverridePack(name))
+                return;
             rebuildAndApply("packRegister:" + name);
         });
         plugin.getEventRegistry().register(AssetPackUnregisterEvent.class, e -> {
             String name = e.getAssetPack().getName();
-            if (isSyntheticOverridePack(name)) return;
+            if (isSyntheticOverridePack(name))
+                return;
             packSourceCache.remove(name);
             rebuildAndApply("packUnregister:" + name);
         });
@@ -165,8 +167,10 @@ public final class PatchManager implements PatchChangeListener {
     }
 
     public synchronized Set<String> forceReapply(@Nonnull String reason) {
-        if (!election.isActive()) return Set.of();
-        if (registrar.needsRegister()) registrar.register();
+        if (!election.isActive())
+            return Set.of();
+        if (registrar.needsRegister())
+            registrar.register();
         return rebuildAndApply(reason);
     }
 
@@ -175,19 +179,21 @@ public final class PatchManager implements PatchChangeListener {
     }
 
     public synchronized Set<String> rebuildAndApply(@Nonnull String reason) {
-        if (!election.isActive()) return Set.of();
+        if (!election.isActive())
+            return Set.of();
 
-        Map<String, JsonObject> desired = compose().outputs();
+        var desired = compose().outputs();
         if (desired.isEmpty()) {
-            LOGGER.at(Level.INFO).log("[patcher] no patches resolved (%s)", reason);
+            LOGGER.atInfo().log("[patcher] no patches resolved (%s)", reason);
             return Set.of();
         }
 
         boolean reactive = isReactiveReason(reason);
         List<Path> changed = new ArrayList<>();
-        for (Map.Entry<String, JsonObject> entry : desired.entrySet()) {
+        for (var entry : desired.entrySet()) {
             String target = entry.getKey();
-            if (trippedTargets.contains(target)) continue;
+            if (trippedTargets.contains(target))
+                continue;
             if (reactive && consecutiveWrites.getOrDefault(target, 0) >= LOOP_BREAKER_THRESHOLD) {
                 trippedTargets.add(target);
                 LOGGER.at(Level.WARNING).log(
@@ -198,7 +204,8 @@ public final class PatchManager implements PatchChangeListener {
             }
             Path written = store.writeIfChanged(target, entry.getValue());
             if (written != null) {
-                if (reactive) consecutiveWrites.merge(target, 1, Integer::sum);
+                if (reactive)
+                    consecutiveWrites.merge(target, 1, Integer::sum);
                 changed.add(written);
             } else {
                 consecutiveWrites.remove(target);
@@ -226,7 +233,8 @@ public final class PatchManager implements PatchChangeListener {
     }
 
     public void shutdown() {
-        if (!election.isActive()) return;
+        if (!election.isActive())
+            return;
         store.clear(true);
         election.release();
     }
@@ -250,12 +258,14 @@ public final class PatchManager implements PatchChangeListener {
         }
         for (CompileResult.UnresolvedExpression ue : result.unresolvedExpressions()) {
             String where = ue.target() == null || ue.target().equals(ue.where())
-                    ? ue.where() : ue.target() + " " + ue.where();
+                    ? ue.where()
+                    : ue.target() + " " + ue.where();
             diagnostics.add(String.format(
                     "[patcher] unresolved expression at %s (\"%s\"): %s", where, ue.expression(), ue.reason()));
         }
         for (String line : diagnostics) {
-            if (!reportedDiagnostics.contains(line)) LOGGER.at(Level.WARNING).log("%s", line);
+            if (!reportedDiagnostics.contains(line))
+                LOGGER.at(Level.WARNING).log("%s", line);
         }
         reportedDiagnostics = diagnostics;
         for (CompileResult.GatedSource gs : result.gatedSources()) {
@@ -285,7 +295,8 @@ public final class PatchManager implements PatchChangeListener {
         int cached = 0;
         for (int i = 0; i < packs.size(); i++) {
             AssetPack pack = packs.get(i);
-            if (isSyntheticOverridePack(pack.getName())) continue;
+            if (isSyntheticOverridePack(pack.getName()))
+                continue;
             List<PatchSource> perPack = packSourceCache.get(pack.getName());
             if (perPack == null) {
                 perPack = walkPack(pack, i, kinds);
@@ -295,7 +306,8 @@ public final class PatchManager implements PatchChangeListener {
                 cached++;
             }
             for (PatchSource s : perPack) {
-                // loadIndex is a position in getAssetPacks() that shifts on register/unregister;
+                // loadIndex is a position in getAssetPacks() that shifts on
+                // register/unregister;
                 // re-stamp against the pack current index, copy the record only when it moved
                 out.add(s.loadIndex() == i ? s
                         : new PatchSource(s.id(), i, s.targetRelative(), s.identity(), s.kind(), s.patchJson()));
@@ -317,12 +329,15 @@ public final class PatchManager implements PatchChangeListener {
                         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                             Path name = file.getFileName();
                             SourceKind kind = name == null ? null : kinds.kindFor(name.toString());
-                            if (kind == null) return FileVisitResult.CONTINUE;
+                            if (kind == null)
+                                return FileVisitResult.CONTINUE;
                             JsonObject json = readJson(file);
-                            if (json == null) return FileVisitResult.CONTINUE;
+                            if (json == null)
+                                return FileVisitResult.CONTINUE;
                             String relSource = PathUtil.normalizeRelative(root, file);
                             String stem = PathUtil.stripSuffix(relSource, kind.extension());
-                            if (stem == null) return FileVisitResult.CONTINUE;
+                            if (stem == null)
+                                return FileVisitResult.CONTINUE;
                             boolean scope = kind.basePolicy() == BasePolicy.SCOPE;
                             String target = scope ? "" : PathUtil.recoverTargetExtension(stem);
                             String identity = scope ? "" : AssetTypeIndex.identityOf(target);
@@ -340,9 +355,11 @@ public final class PatchManager implements PatchChangeListener {
     private BaseResolver.ResolvedBase resolveBaseJson(@Nonnull String relativeTarget) {
         AssetTypeIndex locator = this.assetLocator;
         Path base = locator == null ? null : locator.upstreamBasePath(relativeTarget);
-        if (base == null) return null;
+        if (base == null)
+            return null;
         JsonObject json = readJson(base);
-        if (json == null) return null;
+        if (json == null)
+            return null;
         String path = AssetTypeIndex.serverRelative(base);
         return new BaseResolver.ResolvedBase(path == null ? relativeTarget : path, json);
     }
@@ -350,38 +367,38 @@ public final class PatchManager implements PatchChangeListener {
     @Nonnull
     private PatchContext buildPatchContext() {
         return new PatchContext() {
-            private Map<String, Semver> present;
-
-            private Map<String, Semver> present() {
-                if (present == null) {
-                    Map<String, Semver> versions = new HashMap<>();
-                    for (AssetPack p : AssetModule.get().getAssetPacks()) {
-                        versions.put(p.getName(), p.getManifest().getVersion());
-                    }
-                    PluginManager pluginManager = PluginManager.get();
-                    if (pluginManager != null) {
-                        for (PluginBase plugin : pluginManager.getPlugins()) {
-                            versions.putIfAbsent(plugin.getIdentifier().toString(),
-                                    plugin.getManifest().getVersion());
-                        }
-                    }
-                    present = versions;
-                }
-                return present;
-            }
 
             @Override
-            public boolean packPresent(@Nonnull String packName) {
-                return present().containsKey(packName);
-            }
-
-            @Override
-            public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
-                Semver version = present().get(packName);
-                if (version == null) return false;
+            public boolean versionSatisfies(@Nonnull PluginIdentifier pluginIdentifier, @Nonnull String range) {
+                PluginManager pluginManager = PluginManager.get();
+                var plugin = pluginManager.getPlugin(pluginIdentifier);
+                Semver version = plugin.getManifest().getVersion();
                 try {
-                    return version.satisfies(SemverRange.fromString(range));
+
+
+                    if (version == null) {
+                        // check asset packs
+                        var pack = AssetModule.get().getAssetPack(pluginIdentifier.toString());
+                        if (pack == null || pack.getManifest() == null) {
+                            HytaleLogger.getLogger().atSevere()
+                                    .log("Returned FALSE validating the version range %s compares to $s", version,
+                                            SemverRange.fromString(range));
+                            return false;
+                        }
+                        version = pack.getManifest().getVersion();
+                    }
+                    var res = version.satisfies(SemverRange.fromString(range));
+                    if (res == false) {
+                        HytaleLogger.getLogger().atSevere()
+                                .log("Returned FALSE validating the version range %s compares to $s", version,
+                                        SemverRange.fromString(range));
+                    }
+                    return res;
                 } catch (RuntimeException e) {
+
+                    HytaleLogger.getLogger().atSevere().withCause(e)
+                            .log("Failed to validate the version range %s compares to $s", version,
+                                    SemverRange.fromString(range));
                     return true;
                 }
             }
@@ -402,22 +419,22 @@ public final class PatchManager implements PatchChangeListener {
         }
     }
 
-    @Override
     public boolean isSourceFile(@Nonnull Path path) {
         Path name = path.getFileName();
         return name != null && SourceKindRegistry.table().claims(name.toString());
     }
 
-    @Override
     public boolean isBaseFile(@Nonnull Path path) {
         return PathUtil.isJsonFile(path);
     }
 
-    @Override
     public void onPatchEvent(@Nonnull AssetPack pack, @Nonnull Path patchFile) {
-        if (!election.isActive()) return;
-        if (!watchEnabled.get()) return;
-        if (!isSourceFile(patchFile)) return;
+        if (!election.isActive())
+            return;
+        if (!watchEnabled.get())
+            return;
+        if (!isSourceFile(patchFile))
+            return;
         packSourceCache.remove(pack.getName());
         consecutiveWrites.clear();
         trippedTargets.clear();
@@ -425,8 +442,7 @@ public final class PatchManager implements PatchChangeListener {
             rebuildAndApply("patchEdit:" + pack.getName() + ":" + patchFile.getFileName());
         } else {
             String target = patchToTarget.get(patchFile);
-            Set<String> produced =
-                    rebuildAndApply("patchDelete:" + pack.getName() + ":" + patchFile.getFileName());
+            Set<String> produced = rebuildAndApply("patchDelete:" + pack.getName() + ":" + patchFile.getFileName());
             if (target != null && !produced.contains(target)) {
                 restoreOrDrop(target);
             }
@@ -442,10 +458,11 @@ public final class PatchManager implements PatchChangeListener {
         store.writeIfChanged(target, base.json());
     }
 
-    @Override
     public void onBaseEvent(@Nonnull AssetPack pack, @Nonnull Path changedJson) {
-        if (!election.isActive()) return;
-        if (!watchEnabled.get()) return;
+        if (!election.isActive())
+            return;
+        if (!watchEnabled.get())
+            return;
         rebuildAndApply("baseEdit:" + pack.getName() + ":" + changedJson.getFileName());
     }
 

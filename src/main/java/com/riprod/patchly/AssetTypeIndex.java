@@ -60,7 +60,6 @@ final class AssetTypeIndex implements AssetIndex {
     }
 
     @Nullable
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private static String existingTarget(@Nonnull AssetStore store, @Nonnull String id) {
         Object key = store.decodeStringKey(id);
         if (key == null) return null;
@@ -69,7 +68,6 @@ final class AssetTypeIndex implements AssetIndex {
     }
 
     @Nullable
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private static Path upstreamPath(@Nonnull AssetStore store, @Nonnull String id) {
         Object key = store.decodeStringKey(id);
         if (key == null) return null;

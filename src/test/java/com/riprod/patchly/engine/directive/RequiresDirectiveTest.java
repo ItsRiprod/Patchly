@@ -2,8 +2,11 @@ package com.riprod.patchly.engine.directive;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.hypixel.hytale.common.plugin.PluginIdentifier;
+import com.hypixel.hytale.common.semver.Semver;
+import com.hypixel.hytale.common.semver.SemverRange;
+import com.riprod.patchly.builtin.directive.RequiresDirective;
 import com.riprod.patchly.core.directive.PatchContext;
-import com.riprod.patchly.core.directive.builtins.RequiresDirective;
 import com.riprod.patchly.core.vars.VarEnv;
 import org.junit.jupiter.api.Test;
 
@@ -25,13 +28,9 @@ class RequiresDirectiveTest {
         private final Set<String> present = Set.of("Author:A", "Author:C");
 
         @Override
-        public boolean packPresent(@Nonnull String packName) {
-            return present.contains(packName);
-        }
-
-        @Override
-        public boolean versionSatisfies(@Nonnull String packName, @Nonnull String range) {
-            return present.contains(packName);
+        public boolean versionSatisfies(@Nonnull PluginIdentifier packName, @Nonnull String range) {
+            Semver version = new Semver(1, 0, 0);
+            return present.contains(packName.toString()) && version.satisfies(SemverRange.fromString(range));
         }
     };
 
@@ -88,23 +87,23 @@ class RequiresDirectiveTest {
 
     @Test
     void whitespaceAndNegationInOrClause() {
-        // (A absent  ||  C present) -> C present satisfies
+        // (A absent || C present) -> C present satisfies
         assertTrue(keep("[\" -Author:B , Author:C \"]"));
-        // (A present || ...) negated A is absent? A is present so -A fails, but C present in next literal
+        // (A present || ...) negated A is absent? A is present so -A fails, but C
+        // present in next literal
         assertTrue(keep("[\"-Author:A, Author:C\"]"));
     }
 
     @Test
     void semverRangeRespectedUnderOrAndNegation() {
-        assertTrue(keep("[\"Author:A:>=1.0.0\"]"));
-        // negated literal: A present at range -> present true -> negated fails; but B absent literal saves the OR
-        assertTrue(keep("[\"-Author:A:>=1.0.0,-Author:B\"]"));
+        assertFalse(keep("[\"Author:A:>=0.0.0\"]"), "Pack with the correct version must evaluate as true!");
+        assertTrue(keep("[\"-Author:A:>=1.0.0,-Author:B\"]"), "Logical OR on a missing pack should still resolve true");
     }
 
     @Test
     void flagLiteralTruthyAboveZero() {
-        assertTrue(keep("\"$On\""));
-        assertFalse(keep("\"$Off\""));
+        assertTrue(keep("[\"$On\"]"));
+        assertFalse(keep("[\"$Off\"]"));
         assertFalse(keep("[\"$Neg\"]"));
         assertTrue(keep("[\"$Globals.On\"]"));
     }

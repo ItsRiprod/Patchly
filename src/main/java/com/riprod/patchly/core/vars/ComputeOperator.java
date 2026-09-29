@@ -4,9 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.riprod.patchly.core.MergeContext;
-import com.riprod.patchly.core.MergeOperator;
+import com.riprod.patchly.core.MergeEngine;
 import com.riprod.patchly.core.compile.CompileResult.UnresolvedExpression;
+import com.riprod.patchly.core.ops.MergeOperator;
 import com.riprod.patchly.core.vars.ExpressionEvaluator.VarLookup;
 
 import javax.annotation.Nonnull;
@@ -38,7 +38,7 @@ public final class ComputeOperator implements MergeOperator {
 
     @Override
     public void apply(@Nonnull JsonObject target, @Nonnull String baseKey,
-                      @Nonnull JsonElement patchValue, @Nonnull MergeContext ctx) {
+                      @Nonnull JsonElement patchValue, @Nonnull MergeEngine ctx) {
         if (patchValue.isJsonPrimitive() && patchValue.getAsJsonPrimitive().isNumber()) {
             target.add(baseKey, numberPrimitive(patchValue.getAsDouble()));
             return;
@@ -59,15 +59,15 @@ public final class ComputeOperator implements MergeOperator {
 
     @Override
     public void onLocatorMiss(@Nonnull JsonArray base, int index,
-                              @Nonnull JsonObject cleanPayload, @Nonnull MergeContext ctx) {
+                              @Nonnull JsonObject cleanPayload, @Nonnull MergeEngine ctx) {
     }
 
     @Override
     public void onPlainElement(@Nonnull JsonArray base, int index,
-                               @Nonnull JsonElement element, @Nonnull MergeContext ctx) {
+                               @Nonnull JsonElement element, @Nonnull MergeEngine ctx) {
     }
 
-    private void record(@Nonnull MergeContext ctx, @Nonnull String baseKey,
+    private void record(@Nonnull MergeEngine ctx, @Nonnull String baseKey,
             @Nonnull String expression, @Nonnull String reason, @Nullable String missingScope) {
         String path = String.join("/", ctx.currentPath());
         String where = path.isEmpty() ? baseKey + SUFFIX : path + "/" + baseKey + SUFFIX;
