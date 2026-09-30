@@ -1,3 +1,7 @@
+# v3.6.2
+- Added Update 7 compatibility
+(It worked fine, no breaking changes lol)
+
 # v3.6.1
 
 - `$Requires` accepts feature flags. Any entry without a colon is an expression over your `.vars` variables and passes when it evaluates greater than zero, so `"$Requires": ["$HeavyArmor", "-$Legacy", "Riprod:Hexcode,$Fallback"]` mixes flags and packs under the existing AND/OR/NOT rules. A leading `-` is boolean NOT (`-$Zero` is true). An unknown variable evaluates false and the reason is recorded.
